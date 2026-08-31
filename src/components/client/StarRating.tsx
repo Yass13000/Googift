@@ -25,122 +25,88 @@ export const StarRating: React.FC<StarRatingProps> = ({
 
   const handleSelect = (star: number) => {
     setSelected(star);
-    // Court délai pour apprécier l'animation de sélection
+    // Court délai pour apprécier l'animation de tap
     setTimeout(() => {
       onRatingSelected(star);
-    }, 380);
-  };
-
-  const getRatingFeedback = (stars: number | null) => {
-    if (!stars) return { text: 'Touchez une étoile pour donner votre note', emoji: '✨' };
-    switch (stars) {
-      case 5:
-        return { text: 'Incroyable ! Expérience parfaite !', emoji: '🤩' };
-      case 4:
-        return { text: 'Très bien ! Merci beaucoup !', emoji: '😊' };
-      case 3:
-        return { text: 'Correct, nous pouvons nous améliorer', emoji: '🙂' };
-      case 2:
-        return { text: 'Décevant, dites-nous tout', emoji: '😕' };
-      case 1:
-        return { text: 'Insatisfait, nous sommes désolés', emoji: '😔' };
-      default:
-        return { text: 'Votre avis compte pour nous', emoji: '✨' };
-    }
+    }, 350);
   };
 
   const activeStar = hovered || selected;
-  const feedback = getRatingFeedback(activeStar);
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white rounded-3xl shadow-xl border border-slate-100/80 overflow-hidden relative">
-      {/* 1. BANNIÈRE SUPÉRIEURE PLEINE LARGEUR (~180px - 210px) */}
-      <div className="w-full h-44 sm:h-52 relative overflow-hidden bg-slate-900">
+    <div className="w-full flex flex-col items-center">
+      {/* 1. BANNIÈRE PLEINE LARGEUR EN HAUT (100% écran, collée au sommet) */}
+      <div className="w-full h-48 sm:h-56 relative bg-slate-900 overflow-hidden">
         <img
           src={bannerUrl || DEFAULT_BANNER}
           alt={restaurantName}
-          className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105"
+          className="w-full h-full object-cover opacity-90"
         />
-        {/* Dégradé doux pour faire ressortir le bas */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
+      </div>
 
-        {/* LOGO EN MÉDAILLON CENTRÉ À CHEVAL (-bottom-10) */}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-10 z-20">
-          <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-white border-4 border-white shadow-xl overflow-hidden flex items-center justify-center p-1">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={restaurantName}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              <div
-                className="w-full h-full rounded-full flex items-center justify-center text-white font-black text-2xl shadow-inner"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <Gift className="w-8 h-8" />
-              </div>
-            )}
-          </div>
+      {/* 2. LOGO MÉDAILLON CENTRÉ HORS OVERFLOW (-mt-10) */}
+      <div className="-mt-10 relative z-10 mx-auto">
+        <div className="w-20 h-20 rounded-full bg-white border-4 border-white shadow-md flex items-center justify-center overflow-hidden p-1">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={restaurantName}
+              className="w-full h-full rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="w-full h-full rounded-full flex items-center justify-center text-white font-black text-2xl shadow-inner"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Gift className="w-8 h-8" />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 2. CORPS DE LA PAGE (ESPACEMENT SOUS LE MÉDAILLON) */}
-      <div className="pt-14 sm:pt-16 pb-8 px-6 sm:px-8 text-center flex flex-col items-center">
-        {/* Texte d'introduction discret */}
-        <span className="text-slate-500 text-sm font-medium tracking-wide">
+      {/* 3. TYPOGRAPHIE & ESPACEMENTS EXACTS */}
+      <div className="w-full px-4 text-center flex flex-col items-center">
+        <p className="mt-4 text-slate-500 text-sm font-normal text-center">
           Merci pour votre passage.
-        </span>
+        </p>
 
-        {/* Titre principal percutant */}
-        <h1 className="text-slate-900 font-extrabold text-2xl sm:text-3xl tracking-tight leading-tight mt-2">
+        <h1 className="mt-3 text-slate-900 font-extrabold text-2xl text-center tracking-tight">
           Notez votre expérience
         </h1>
-        <h2 className="text-slate-900 font-black text-2xl sm:text-3xl tracking-tight leading-tight mt-0.5 max-w-xs truncate">
+
+        <h2 className="mt-1 text-slate-900 font-extrabold text-2xl text-center max-w-xs truncate">
           {restaurantName}
         </h2>
 
-        {/* 3. ZONE DE NOTATION PAR ÉTOILES (ENCADRÉ PASTEL) */}
-        <div className="w-full bg-amber-50/50 sm:bg-slate-50/80 border border-amber-100/80 sm:border-slate-100 rounded-3xl p-6 sm:p-7 mt-6 shadow-inner flex flex-col items-center">
-          {/* Ligne des 5 Grandes Étoiles Dorées */}
-          <div className="flex justify-center items-center gap-2 sm:gap-3 my-1">
+        {/* 4. ZONE D'ÉTOILES ÉPURÉE (bg-slate-50/70, sans textes superflus) */}
+        <div className="mx-auto mt-8 p-6 bg-slate-50/70 rounded-2xl max-w-xs w-full flex justify-center items-center">
+          <div className="flex justify-center items-center gap-2 sm:gap-2.5">
             {[1, 2, 3, 4, 5].map((star) => {
               const isFilled = activeStar ? star <= activeStar : false;
               return (
                 <motion.button
                   key={star}
                   type="button"
-                  whileHover={{ scale: 1.18 }}
+                  whileHover={{ scale: 1.15 }}
                   whileTap={{ scale: 1.25 }}
                   onMouseEnter={() => setHovered(star)}
                   onMouseLeave={() => setHovered(null)}
                   onClick={() => handleSelect(star)}
-                  className="p-1 sm:p-1.5 focus:outline-none cursor-pointer transition-transform"
+                  className="p-1 focus:outline-none cursor-pointer"
                   aria-label={`${star} étoiles sur 5`}
                 >
                   <Star
-                    className={`w-10 h-10 sm:w-11 sm:h-11 transition-all duration-200 ${
+                    className={`w-9 h-9 transition-all duration-150 ${
                       isFilled
-                        ? 'fill-amber-400 text-amber-400 stroke-amber-500 drop-shadow-md'
-                        : 'stroke-amber-400 stroke-[1.5] text-transparent hover:stroke-amber-500'
+                        ? 'fill-amber-400 text-amber-400 drop-shadow-sm'
+                        : 'stroke-amber-400 stroke-[1.5] text-transparent'
                     }`}
                   />
                 </motion.button>
               );
             })}
           </div>
-
-          {/* Feedback dynamique sous les étoiles */}
-          <div className="h-8 flex items-center justify-center gap-2 text-slate-700 font-bold text-xs sm:text-sm mt-3 transition-all duration-200">
-            <span className="text-lg">{feedback.emoji}</span>
-            <span>{feedback.text}</span>
-          </div>
         </div>
-
-        {/* Mention discrète sous l'encadré */}
-        <p className="text-[11px] text-slate-400 mt-5">
-          🎁 Donnez votre avis pour débloquer votre tirage sur la Roue Cadeaux
-        </p>
       </div>
     </div>
   );

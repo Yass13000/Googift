@@ -110,56 +110,48 @@ export const ClientPage: React.FC = () => {
   }
 
   const primaryColor = restaurant.primary_color || '#7C3AED';
-  const restaurantName = restaurant.name || 'Notre Établissement';
+  const restaurantName = restaurant.name || 'Notre Établissement';  return (
+    <div className={`min-h-screen flex flex-col justify-between text-slate-800 relative overflow-x-hidden selection:bg-indigo-500 selection:text-white ${
+      step === 'rating' ? 'bg-white' : 'bg-[#FBFBFE] p-4 sm:p-6'
+    }`}>
+      {/* Étoiles dorées flottantes décoratives (étapes roue / sas) */}
+      {step !== 'rating' && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+          <motion.div
+            animate={{ y: [0, -8, 0], opacity: [0.6, 0.9, 0.6] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute top-12 left-6 sm:left-24 text-amber-300"
+          >
+            <svg className="w-6 h-6 fill-current drop-shadow-sm" viewBox="0 0 24 24">
+              <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
+            </svg>
+          </motion.div>
 
-  return (
-    <div className="min-h-screen bg-[#FBFBFE] flex flex-col justify-between p-4 sm:p-6 text-slate-800 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
-      {/* Étoiles dorées flottantes décoratives en arrière-plan */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
-        <motion.div
-          animate={{ y: [0, -8, 0], opacity: [0.6, 0.9, 0.6] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-12 left-6 sm:left-24 text-amber-300"
-        >
-          <svg className="w-6 h-6 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-            <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
-          </svg>
-        </motion.div>
+          <motion.div
+            animate={{ y: [0, 10, 0], opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+            className="absolute top-28 right-8 sm:right-32 text-amber-300"
+          >
+            <svg className="w-8 h-8 fill-current drop-shadow-sm" viewBox="0 0 24 24">
+              <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
+            </svg>
+          </motion.div>
 
-        <motion.div
-          animate={{ y: [0, 10, 0], opacity: [0.4, 0.8, 0.4] }}
-          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          className="absolute top-28 right-8 sm:right-32 text-amber-300"
-        >
-          <svg className="w-8 h-8 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-            <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
-          </svg>
-        </motion.div>
-
-        <motion.div
-          animate={{ y: [0, -6, 0], opacity: [0.5, 0.85, 0.5] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute bottom-24 left-10 text-amber-300"
-        >
-          <svg className="w-7 h-7 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-            <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
-          </svg>
-        </motion.div>
-
-        <motion.div
-          animate={{ y: [0, 8, 0], opacity: [0.4, 0.75, 0.4] }}
-          transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
-          className="absolute bottom-32 right-12 text-amber-300"
-        >
-          <svg className="w-5 h-5 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-            <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
-          </svg>
-        </motion.div>
-      </div>
+          <motion.div
+            animate={{ y: [0, -6, 0], opacity: [0.5, 0.85, 0.5] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+            className="absolute bottom-24 left-10 text-amber-300"
+          >
+            <svg className="w-7 h-7 fill-current drop-shadow-sm" viewBox="0 0 24 24">
+              <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
+            </svg>
+          </motion.div>
+        </div>
+      )}
 
       {/* Bouton restauration coupon si actif */}
       {activeSavedPrize && (
-        <div className="max-w-md w-full mx-auto flex justify-end mb-2 z-10">
+        <div className="max-w-md w-full mx-auto flex justify-end p-3 z-20">
           <button
             onClick={handleRestoreVoucher}
             className="text-xs font-bold tracking-wider text-amber-700 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm transition-all cursor-pointer animate-pulse"
@@ -202,14 +194,16 @@ export const ClientPage: React.FC = () => {
       )}
 
       {/* ZONE CENTRALE DE JEU & ÉTAPES */}
-      <main className="my-auto py-3 flex items-center justify-center w-full z-10">
+      <main className={`w-full flex items-center justify-center z-10 ${
+        step === 'rating' ? 'flex-1 items-start' : 'my-auto py-3'
+      }`}>
         <AnimatePresence mode="wait">
           {step === 'rating' && (
             <motion.div
               key="rating"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="w-full flex justify-center"
             >
               <StarRating
@@ -221,7 +215,6 @@ export const ClientPage: React.FC = () => {
               />
             </motion.div>
           )}
-
 
           {step === 'google_redirect' && (
             <motion.div
@@ -278,7 +271,6 @@ export const ClientPage: React.FC = () => {
             </motion.div>
           )}
 
-
           {step === 'voucher' && wonPrize && (
             <motion.div
               key="voucher"
@@ -298,14 +290,15 @@ export const ClientPage: React.FC = () => {
       </main>
 
       {/* PIED DE PAGE AVEC LIEN RÈGLEMENT DU JEU */}
-      <footer className="max-w-md w-full mx-auto text-center py-2 z-10">
+      <footer className="w-full text-center pb-8 pt-4 z-10">
         <button
           onClick={() => setShowRulesModal(true)}
-          className="text-xs font-semibold text-slate-400 hover:text-slate-600 underline underline-offset-4 transition-colors cursor-pointer"
+          className="text-xs font-medium text-slate-400 hover:text-slate-600 underline underline-offset-4 transition-colors cursor-pointer"
         >
           Règlement du jeu
         </button>
       </footer>
+
 
       {/* MODALE DU RÈGLEMENT DU JEU */}
       <AnimatePresence>
