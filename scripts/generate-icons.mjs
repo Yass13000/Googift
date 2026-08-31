@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+import fs from 'fs';
+import path from 'path';
+
+const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1E293B"/>
@@ -48,4 +51,12 @@
   <path d="M 120,330 Q 128,345 142,352 Q 128,360 120,374 Q 112,360 98,352 Q 112,345 120,330 Z" fill="#F43F5E"/>
   <circle cx="140" cy="130" r="8" fill="#FDE047" opacity="0.8"/>
   <circle cx="380" cy="380" r="10" fill="#FDE047" opacity="0.8"/>
-</svg>
+</svg>`;
+
+const publicDir = path.resolve('public');
+
+// Write vector SVG icon
+fs.writeFileSync(path.join(publicDir, 'pwa-icon.svg'), svgIcon);
+fs.writeFileSync(path.join(publicDir, 'favicon.svg'), svgIcon);
+
+console.log('SVG icons generated successfully.');

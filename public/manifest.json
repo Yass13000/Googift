@@ -1,0 +1,49 @@
+{
+  "short_name": "GoGift",
+  "name": "GoGift - Roue de la Fortune & Récompenses",
+  "description": "Tournez la roue, donnez votre avis et remportez des cadeaux exclusifs en restaurant.",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0B0F19",
+  "background_color": "#0B0F19",
+  "lang": "fr",
+  "categories": ["food", "entertainment", "shopping"],
+  "shortcuts": [
+    {
+      "name": "Espace Caisse / Staff",
+      "short_name": "Staff",
+      "description": "Valider un coupon gagnant",
+      "url": "/staff",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Administration",
+      "short_name": "Admin",
+      "description": "Tableau de bord et gestion",
+      "url": "/admin",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
