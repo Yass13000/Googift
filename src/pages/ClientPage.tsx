@@ -262,13 +262,16 @@ export const ClientPage: React.FC = () => {
             >
               <LuckyWheel
                 rewards={rewards}
-                primaryColor="#7C3AED"
-                secondaryColor="#A855F7"
+                primaryColor={primaryColor}
+                secondaryColor={restaurant.theme_secondary || '#A855F7'}
+                accentColor={restaurant.theme_accent || '#F59E0B'}
+                logoUrl={restaurant.logo_url}
                 restaurantName={restaurantName}
                 onRewardWon={handleRewardWon}
               />
             </motion.div>
           )}
+
 
           {step === 'voucher' && wonPrize && (
             <motion.div
