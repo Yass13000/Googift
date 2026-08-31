@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getRestaurant, getActiveRewards, createClaimedPrize, submitReviewFeedback } from '../lib/supabase';
 import type { Restaurant, Reward, ClaimedPrize } from '../lib/types';
 import { StarRating } from '../components/client/StarRating';
-import { GoogleReviewRedirect } from '../components/client/GoogleReviewRedirect';
+import { GoogleReviewGate } from '../components/client/GoogleReviewGate';
 import { PrivateFeedbackForm } from '../components/client/PrivateFeedbackForm';
 import { LuckyWheel } from '../components/client/LuckyWheel';
 import { PrizeVoucher } from '../components/client/PrizeVoucher';
 import { Gift, Ticket } from 'lucide-react';
+
 
 type Step = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'voucher';
 
@@ -174,14 +175,16 @@ export const ClientPage: React.FC = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               className="w-full flex justify-center"
             >
-              <GoogleReviewRedirect
+              <GoogleReviewGate
                 rating={userRating}
                 googleReviewUrl={restaurant.google_review_url || 'https://google.com'}
+                restaurantId={restaurant.id}
                 primaryColor={primaryColor}
                 onProceedToWheel={() => setStep('wheel')}
               />
             </motion.div>
           )}
+
 
           {step === 'private_feedback' && (
             <motion.div

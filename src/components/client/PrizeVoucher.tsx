@@ -201,10 +201,17 @@ export const PrizeVoucher: React.FC<PrizeVoucherProps> = ({
       </div>
 
       {/* Instructions for customer */}
-      <div className="w-full bg-slate-50 p-3.5 rounded-2xl text-left flex items-start gap-3 border border-slate-200 mb-4">
+      <div className="w-full bg-slate-50 p-3.5 rounded-2xl text-left flex items-start gap-3 border border-slate-200 mb-2">
         <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
         <p className="text-xs text-slate-600 leading-relaxed">
           <strong>Présentez cet écran à votre serveur ou en caisse</strong> au moment du règlement pour appliquer immédiatement votre cadeau.
+        </p>
+      </div>
+
+      {/* Anti-fraud warning condition */}
+      <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 mb-4 text-center">
+        <p className="text-amber-800 text-xs font-semibold">
+          ⚠️ <strong>Condition :</strong> Présentez cet écran avec votre avis Google publié pour que le serveur valide votre cadeau en caisse.
         </p>
       </div>
 
@@ -214,4 +221,5 @@ export const PrizeVoucher: React.FC<PrizeVoucherProps> = ({
     </motion.div>
   );
 };
+
 
