@@ -1,59 +1,36 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { Sparkles, Gift } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { Reward } from '../../lib/types';
 
 interface LuckyWheelProps {
   rewards: Reward[];
   onRewardWon: (reward: Reward) => void;
-  // Propriétés du thème dynamique du restaurant
   primaryColor?: string;
   secondaryColor?: string;
   accentColor?: string;
-  backgroundColor?: string;
-  logoUrl?: string | null;
   restaurantName?: string;
 }
 
 export const LuckyWheel: React.FC<LuckyWheelProps> = ({
   rewards,
   onRewardWon,
-  primaryColor = '#f16022',
-  secondaryColor = '#283b25',
-  accentColor = '#b8c073',
-  backgroundColor = 'rgba(15, 23, 42, 0.92)',
-  logoUrl = null,
-  restaurantName = 'Notre Établissement',
+  primaryColor = '#7C3AED',
+  secondaryColor = '#A855F7',
 }) => {
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [currentRotation, setCurrentRotation] = useState(0);
   const [hasSpun, setHasSpun] = useState(false);
-  const [pegTick, setPegTick] = useState(false);
   const [winningReward, setWinningReward] = useState<Reward | null>(null);
 
-  // Cache d'images (PNGs des lots & Logo central)
+  // Cache d'images PNG des lots
   const imagesCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
-  const logoImageRef = useRef<HTMLImageElement | null>(null);
   const [imagesLoaded, setImagesLoaded] = useState(0);
 
-  // 1. Préchargement du logo restaurant
-  useEffect(() => {
-    if (logoUrl) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = logoUrl;
-      img.onload = () => {
-        logoImageRef.current = img;
-        setImagesLoaded(prev => prev + 1);
-      };
-    } else {
-      logoImageRef.current = null;
-    }
-  }, [logoUrl]);
-
-  // 2. Préchargement des visuels PNG de chaque lot
+  // Préchargement des visuels PNG de chaque lot
   useEffect(() => {
     rewards.forEach((r) => {
       if (r.image_url && !imagesCacheRef.current.has(r.image_url)) {
@@ -62,7 +39,7 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
         img.src = r.image_url;
         img.onload = () => {
           imagesCacheRef.current.set(r.image_url!, img);
-          setImagesLoaded(prev => prev + 1);
+          setImagesLoaded((prev) => prev + 1);
         };
       }
     });
@@ -77,12 +54,12 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      const baseFreq = 620 * (0.85 + 0.35 * speedFactor);
+      const baseFreq = 580 * (0.85 + 0.35 * speedFactor);
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.025);
+      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.025);
 
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
 
       osc.connect(gain);
@@ -94,25 +71,25 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
         navigator.vibrate(8);
       }
     } catch {
-      // Audio context silencieux si bloqué par le navigateur
+      // Audio context silencieux si non autorisé
     }
   }, []);
 
-  // Palette harmonique de secours basée sur le thème du restaurant
-  const getSliceColor = (reward: Reward, index: number, total: number) => {
-    if (reward.color && reward.color.trim() !== '') return reward.color;
-
-    const brandPalette = [primaryColor, secondaryColor, accentColor, '#1E293B'];
-    let color = brandPalette[index % brandPalette.length];
-
-    // Évite d'avoir la même couleur sur le premier et le dernier segment
-    if (index === total - 1 && color === brandPalette[0]) {
-      color = brandPalette[1 % brandPalette.length];
+  // Alternance bicolore élégante violet / lilas (ou basée sur le thème du restaurant)
+  const getSliceColor = (_reward: Reward, index: number, total: number) => {
+    const palette = [
+      primaryColor || '#7C3AED',
+      secondaryColor || '#A855F7',
+    ];
+    let color = palette[index % palette.length];
+    // Évite la même couleur consécutive sur un nombre impair de segments
+    if (total % 2 !== 0 && index === total - 1) {
+      color = '#6366F1'; // Teinte indigo complémentaire
     }
     return color;
   };
 
-  // Algorithme de calcul typographique adaptatif (aucun texte coupé)
+  // Typographie adaptative
   const getWrappedText = (
     ctx: CanvasRenderingContext2D,
     text: string,
@@ -121,7 +98,7 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
   ): { lines: string[]; fontSize: number; lineHeight: number } => {
     let fontSize = 12.5;
     while (fontSize >= 7.5) {
-      ctx.font = `bold ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
       const words = text.split(' ');
       const lines: string[] = [];
       let currentLine = words[0] || '';
@@ -138,7 +115,7 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       }
       lines.push(currentLine);
 
-      if (lines.length <= maxLines && lines.every(l => ctx.measureText(l).width <= maxWidth)) {
+      if (lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= maxWidth)) {
         return { lines, fontSize, lineHeight: fontSize * 1.15 };
       }
       fontSize -= 0.5;
@@ -146,239 +123,174 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
     return { lines: [text], fontSize: 7.5, lineHeight: 9 };
   };
 
-  // Moteur de rendu Canvas High-DPI (Retina)
-  const drawWheel = useCallback((angleOffset: number, ledPhase = 0) => {
-    const canvas = canvasRef.current;
-    if (!canvas || rewards.length === 0) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  // Moteur Canvas High-DPI 60 FPS
+  const drawWheel = useCallback(
+    (angleOffset: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas || rewards.length === 0) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 2) : 2;
-    const cssSize = 360;
+      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2;
+      const cssSize = 340;
 
-    if (canvas.width !== cssSize * dpr || canvas.height !== cssSize * dpr) {
-      canvas.width = cssSize * dpr;
-      canvas.height = cssSize * dpr;
-    }
-
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, cssSize, cssSize);
-
-    const center = cssSize / 2;
-    const radius = center - 20;
-    const totalSegments = rewards.length;
-    const segmentAngle = (2 * Math.PI) / totalSegments;
-
-    // 1. ANNEAU EXTERNE MÉTALLISÉ & OMBRE PORTÉE
-    ctx.save();
-    ctx.translate(center, center);
-
-    ctx.beginPath();
-    ctx.arc(0, 0, radius + 18, 0, 2 * Math.PI);
-    ctx.fillStyle = '#0B0F19';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 16;
-    ctx.shadowOffsetY = 6;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    // Bordure en biseau chromé avec reflets
-    const chromeGrad = ctx.createLinearGradient(-radius - 16, -radius - 16, radius + 16, radius + 16);
-    chromeGrad.addColorStop(0, '#334155');
-    chromeGrad.addColorStop(0.2, '#F8FAFC');
-    chromeGrad.addColorStop(0.5, '#64748B');
-    chromeGrad.addColorStop(0.8, '#E2E8F0');
-    chromeGrad.addColorStop(1, '#1E293B');
-    ctx.beginPath();
-    ctx.arc(0, 0, radius + 16, 0, 2 * Math.PI);
-    ctx.fillStyle = chromeGrad;
-    ctx.fill();
-
-    // Anneau sombre intérieur accueillant les LEDs
-    ctx.beginPath();
-    ctx.arc(0, 0, radius + 10, 0, 2 * Math.PI);
-    ctx.fillStyle = '#090D16';
-    ctx.fill();
-
-    // 2. LEDS CLIGNOTANTES COORDONNÉES AU THÈME
-    const numLeds = Math.max(18, totalSegments * 3);
-    for (let l = 0; l < numLeds; l++) {
-      const ledAngle = (l * 2 * Math.PI) / numLeds;
-      const lx = (radius + 13) * Math.cos(ledAngle);
-      const ly = (radius + 13) * Math.sin(ledAngle);
-
-      const isLit = (l + ledPhase) % 2 === 0;
-
-      ctx.beginPath();
-      ctx.arc(lx, ly, isLit ? 3 : 2, 0, 2 * Math.PI);
-      ctx.fillStyle = isLit ? (accentColor || '#FDE047') : '#64748B';
-      if (isLit) {
-        ctx.shadowColor = accentColor || '#FDE047';
-        ctx.shadowBlur = 6;
+      if (canvas.width !== cssSize * dpr || canvas.height !== cssSize * dpr) {
+        canvas.width = cssSize * dpr;
+        canvas.height = cssSize * dpr;
       }
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, cssSize, cssSize);
+
+      const center = cssSize / 2;
+      const radius = center - 14;
+      const totalSegments = rewards.length;
+      const segmentAngle = (2 * Math.PI) / totalSegments;
+
+      // 1. OMBRE PORTÉE EXTÉRIEURE DOUCE & CONTOUR BLANC ÉPAIS
+      ctx.save();
+      ctx.translate(center, center);
+
+      // Ombre portée sous la roue
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 8, 0, 2 * Math.PI);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.12)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 8;
       ctx.fill();
       ctx.shadowBlur = 0;
-    }
+      ctx.shadowOffsetY = 0;
 
-    // 3. SECTEURS & CONTENU DE LA ROUE
-    ctx.rotate(angleOffset);
-
-    rewards.forEach((reward, i) => {
-      const startAngle = i * segmentAngle;
-      const endAngle = startAngle + segmentAngle;
-      const baseColor = getSliceColor(reward, i, totalSegments);
-
-      ctx.save();
+      // Anneau extérieur blanc épais et net
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, radius, startAngle, endAngle);
-      ctx.closePath();
-
-      // Dégradé radial avec reflet lumineux vers le centre
-      const sliceGrad = ctx.createRadialGradient(0, 0, 8, 0, 0, radius);
-      sliceGrad.addColorStop(0, '#FFFFFF');
-      sliceGrad.addColorStop(0.18, baseColor);
-      sliceGrad.addColorStop(1, baseColor);
-      ctx.fillStyle = sliceGrad;
+      ctx.arc(0, 0, radius + 6, 0, 2 * Math.PI);
+      ctx.fillStyle = '#FFFFFF';
       ctx.fill();
 
-      // Séparateurs de tranches fins et élégants
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.stroke();
+      // 2. ROTATION DES SECTEURS
+      ctx.rotate(angleOffset);
 
-      // 4. IMAGE PNG & TEXTE ADAPTATIF DU LOT
-      ctx.save();
-      const midAngle = startAngle + segmentAngle / 2;
-      ctx.rotate(midAngle);
-
-      const maxLabelRadius = radius - 24;
-      const minLabelRadius = 55;
-      const availableLength = maxLabelRadius - minLabelRadius;
-
-      // Dessin de l'image PNG si présente
-      const cachedImg = reward.image_url ? imagesCacheRef.current.get(reward.image_url) : null;
-      const hasImage = cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0;
-
-      if (hasImage && cachedImg) {
-        const imgSize = Math.min(36, segmentAngle * radius * 0.42);
-        const imgX = radius - 38;
-        const imgY = -imgSize / 2;
+      rewards.forEach((reward, i) => {
+        const startAngle = i * segmentAngle;
+        const endAngle = startAngle + segmentAngle;
+        const sliceColor = getSliceColor(reward, i, totalSegments);
 
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = 6;
-        ctx.drawImage(cachedImg, imgX, imgY, imgSize, imgSize);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, startAngle, endAngle);
+        ctx.closePath();
+
+        // Remplissage du secteur
+        ctx.fillStyle = sliceColor;
+        ctx.fill();
+
+        // Liseré blanc net entre les tranches
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.stroke();
+
+        // 3. IMAGE PNG & TEXTE EN BLANC BOLD RADIAL
+        ctx.save();
+        const midAngle = startAngle + segmentAngle / 2;
+        ctx.rotate(midAngle);
+
+        const maxLabelRadius = radius - 20;
+        const minLabelRadius = 45;
+        const availableLength = maxLabelRadius - minLabelRadius;
+
+        // Image PNG du lot si disponible
+        const cachedImg = reward.image_url ? imagesCacheRef.current.get(reward.image_url) : null;
+        const hasImage = cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0;
+
+        if (hasImage && cachedImg) {
+          const imgSize = Math.min(32, segmentAngle * radius * 0.4);
+          const imgX = radius - 36;
+          const imgY = -imgSize / 2;
+
+          ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+          ctx.shadowBlur = 4;
+          ctx.drawImage(cachedImg, imgX, imgY, imgSize, imgSize);
+          ctx.restore();
+        }
+
+        // Texte du lot en blanc pur gras
+        const textMaxWidth = hasImage ? availableLength - 32 : availableLength;
+        const { lines, fontSize, lineHeight } = getWrappedText(ctx, reward.label, textMaxWidth, 2);
+
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
+
+        // Légère ombre portée sous le texte
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = 3;
+
+        const textTargetX = hasImage ? radius - 42 : radius - 18;
+        const startY = -((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((line, lineIdx) => {
+          const y = startY + lineIdx * lineHeight;
+          ctx.fillText(line, textTargetX, y);
+        });
+
         ctx.restore();
-      }
-
-      // Dessin du texte dynamique
-      const textMaxWidth = hasImage ? availableLength - 34 : availableLength;
-      const { lines, fontSize, lineHeight } = getWrappedText(ctx, reward.label, textMaxWidth, 2);
-
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = `bold ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-
-      // Ombre portée fine pour garantir la lisibilité
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.shadowBlur = 4;
-      ctx.lineWidth = 2.2;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
-
-      const textTargetX = hasImage ? radius - 44 : radius - 18;
-      const startY = -((lines.length - 1) * lineHeight) / 2;
-
-      lines.forEach((line, lineIdx) => {
-        const y = startY + lineIdx * lineHeight;
-        ctx.strokeText(line, textTargetX, y);
-        ctx.fillText(line, textTargetX, y);
+        ctx.restore();
       });
 
-      ctx.restore();
-      ctx.restore();
-    });
+      // 4. MOYEU CENTRAL SOMBRE & ANNEAU
+      ctx.restore(); // Retour au centre fixe
 
-    // 5. PICOTS EN LAITON SUR LE PÉRIMÈTRE
-    for (let p = 0; p < totalSegments; p++) {
-      const pegAngle = p * segmentAngle;
-      const px = (radius - 2) * Math.cos(pegAngle);
-      const py = (radius - 2) * Math.sin(pegAngle);
-
+      // Anneau blanc autour du moyeu central
       ctx.beginPath();
-      ctx.arc(px, py, 3.5, 0, 2 * Math.PI);
-      ctx.fillStyle = '#F8FAFC';
+      ctx.arc(center, center, 32, 0, 2 * Math.PI);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.15)';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Disque central bleu nuit / noir (#0A192F)
+      ctx.beginPath();
+      ctx.arc(center, center, 24, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0A192F';
       ctx.fill();
 
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = '#475569';
-      ctx.stroke();
-    }
-
-    // 6. MOYEU CENTRAL AVEC LOGO DU RESTAURANT
-    ctx.restore(); // Retour au centre fixe
-
-    // Ombre sous le moyeu
-    ctx.beginPath();
-    ctx.arc(center, center, 38, 0, 2 * Math.PI);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.fill();
-
-    // Couronne chromée centrale
-    const hubChrome = ctx.createLinearGradient(center - 32, center - 32, center + 32, center + 32);
-    hubChrome.addColorStop(0, '#FFFFFF');
-    hubChrome.addColorStop(0.5, '#64748B');
-    hubChrome.addColorStop(1, '#0F172A');
-    ctx.beginPath();
-    ctx.arc(center, center, 32, 0, 2 * Math.PI);
-    ctx.fillStyle = hubChrome;
-    ctx.fill();
-
-    // Disque intérieur avec logo ou couleur principale
-    const hubInnerRadius = 25;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(center, center, hubInnerRadius, 0, 2 * Math.PI);
-    ctx.clip();
-
-    if (logoImageRef.current && logoImageRef.current.complete && logoImageRef.current.naturalWidth > 0) {
+      // Point central blanc
+      ctx.beginPath();
+      ctx.arc(center, center, 6, 0, 2 * Math.PI);
       ctx.fillStyle = '#FFFFFF';
       ctx.fill();
-      ctx.drawImage(
-        logoImageRef.current,
-        center - hubInnerRadius + 3,
-        center - hubInnerRadius + 3,
-        (hubInnerRadius - 3) * 2,
-        (hubInnerRadius - 3) * 2
-      );
-    } else {
-      const brandHubGrad = ctx.createRadialGradient(center - 4, center - 4, 2, center, center, hubInnerRadius);
-      brandHubGrad.addColorStop(0, '#FFFFFF');
-      brandHubGrad.addColorStop(0.35, primaryColor);
-      brandHubGrad.addColorStop(1, '#090D16');
-      ctx.fillStyle = brandHubGrad;
+
+      // 5. POINTEUR CENTRAL POINTANT VERS LE HAUT (STYLE MALOU)
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.beginPath();
+      ctx.moveTo(0, -38); // Pointe vers le haut à 12h
+      ctx.lineTo(-12, -14);
+      ctx.lineTo(12, -14);
+      ctx.closePath();
+      ctx.fillStyle = '#0A192F';
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.25)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = -2;
       ctx.fill();
-    }
-    ctx.restore();
+      ctx.restore();
 
-    // Liseré blanc autour du disque central
-    ctx.beginPath();
-    ctx.arc(center, center, hubInnerRadius, 0, 2 * Math.PI);
-    ctx.lineWidth = 1.8;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.stroke();
-
-    ctx.restore();
-  }, [rewards, primaryColor, secondaryColor, accentColor, imagesLoaded]);
+      ctx.restore();
+    },
+    [rewards, primaryColor, secondaryColor, imagesLoaded]
+  );
 
   useEffect(() => {
     drawWheel(currentRotation);
   }, [drawWheel, currentRotation, imagesLoaded]);
 
-  // Sélection pondérée du lot
+  // Tirage au sort pondéré
   const pickWeightedReward = (): { reward: Reward; index: number } => {
     const totalProb = rewards.reduce((sum, r) => sum + (Number(r.probability) || 0), 0);
     const rand = Math.random() * (totalProb > 0 ? totalProb : 100);
@@ -393,7 +305,7 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
     return { reward: rewards[0], index: 0 };
   };
 
-  // Animation de rotation avec décélération quartique
+  // Animation de rotation avec décélération fluide (Ease-Out quartique)
   const handleSpin = () => {
     if (isSpinning || hasSpun || rewards.length === 0) return;
     setIsSpinning(true);
@@ -405,14 +317,14 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
     const totalSegments = rewards.length;
     const segmentAngle = (2 * Math.PI) / totalSegments;
 
-    // Pointeur situé à 12h (angle 3*PI/2)
+    // Le pointeur central pointe vers 12h (angle 3*PI/2)
     const targetSliceAngle = winningIndex * segmentAngle + segmentAngle / 2;
     const baseSpins = 8 * 2 * Math.PI;
     const targetAngle = (1.5 * Math.PI - targetSliceAngle + 2 * Math.PI) % (2 * Math.PI);
     const totalSpinRotation = currentRotation + baseSpins + (targetAngle - (currentRotation % (2 * Math.PI)));
 
     const startTime = performance.now();
-    const duration = 5000;
+    const duration = 4800;
     const startRotation = currentRotation;
     let lastPinTick = 0;
 
@@ -420,7 +332,7 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
-      // Courbe Ease-Out quartique
+      // Easing Quartique
       const easeOut = 1 - Math.pow(1 - progress, 4);
       const angle = startRotation + (totalSpinRotation - startRotation) * easeOut;
 
@@ -428,13 +340,10 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       if (pinIndex !== lastPinTick) {
         lastPinTick = pinIndex;
         playClickSound(1 - progress);
-        setPegTick(true);
-        setTimeout(() => setPegTick(false), 35);
       }
 
-      const ledPhase = Math.floor(now / 110);
       setCurrentRotation(angle);
-      drawWheel(angle, ledPhase);
+      drawWheel(angle);
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -443,10 +352,10 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
 
         try {
           confetti({
-            particleCount: 90,
-            spread: 75,
+            particleCount: 100,
+            spread: 80,
             origin: { y: 0.6 },
-            colors: [primaryColor, accentColor, '#F59E0B', '#10B981', '#FFFFFF']
+            colors: ['#7C3AED', '#A855F7', '#F59E0B', '#10B981', '#6366F1'],
           });
         } catch {}
 
@@ -460,95 +369,24 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 15 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="flex flex-col items-center p-6 sm:p-8 rounded-3xl sm:rounded-4xl shadow-2xl border border-white/10 max-w-md w-full mx-auto relative overflow-hidden backdrop-blur-2xl"
-      style={{
-        backgroundColor: backgroundColor || 'rgba(15, 23, 42, 0.92)',
-        boxShadow: `0 20px 50px -15px ${primaryColor}33`,
-      }}
-    >
-      {/* Lueur d'ambiance dynamique du restaurant */}
-      <div
-        className="absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl opacity-25 pointer-events-none"
-        style={{ backgroundColor: primaryColor }}
-      />
-      <div
-        className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-20 pointer-events-none"
-        style={{ backgroundColor: accentColor }}
-      />
-
-      {/* Badge du Restaurant */}
-      <div
-        className="flex items-center gap-2 border px-4 py-1.5 rounded-full mb-3 text-xs font-black uppercase tracking-wider shadow-sm"
-        style={{
-          backgroundColor: `${primaryColor}1A`,
-          borderColor: `${primaryColor}4D`,
-          color: accentColor || '#FDE047',
-        }}
-      >
-        <Sparkles className="w-3.5 h-3.5 animate-spin-slow" />
-        <span>{restaurantName} • 100% Gagnant</span>
-      </div>
-
-      <h2 className="text-2xl font-black text-white tracking-tight mb-1 text-center">
-        Tournez & Gagnez !
-      </h2>
-      <p className="text-slate-300 text-xs text-center mb-6 max-w-xs font-medium">
-        Touchez la roue ou le bouton pour remporter votre cadeau immédiatement.
-      </p>
-
-      {/* CONTENEUR DE LA ROUE & AIGUILLE 3D */}
-      <div className="relative w-[340px] h-[340px] sm:w-[360px] sm:h-[360px] flex items-center justify-center mb-6 select-none">
-        {/* Aiguille supérieure stylisée aux couleurs du restaurant */}
-        <motion.div
-          animate={{
-            rotate: pegTick ? -12 : 0,
-            scale: pegTick ? 1.15 : 1
-          }}
-          transition={{ type: 'spring', stiffness: 500, damping: 15 }}
-          className="absolute -top-3 z-30 flex flex-col items-center pointer-events-none drop-shadow-2xl"
-        >
-          <div className="w-9 h-12 relative flex items-center justify-center">
-            <svg viewBox="0 0 36 48" className="w-9 h-12 filter drop-shadow-md">
-              <path
-                d="M 18,46 L 4,14 C 0,6 6,0 18,0 C 30,0 36,6 32,14 Z"
-                fill="url(#themeNeedleGrad)"
-                stroke="#FFFFFF"
-                strokeWidth="2"
-              />
-              <circle cx="18" cy="14" r="5" fill="#FFFFFF" stroke={primaryColor} strokeWidth="1.5" />
-              <defs>
-                <linearGradient id="themeNeedleGrad" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor={primaryColor} />
-                  <stop offset="60%" stopColor={accentColor || '#F59E0B'} />
-                  <stop offset="100%" stopColor={primaryColor} />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </motion.div>
-
-        {/* Canvas Haute Définition */}
+    <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+      {/* Conteneur de la Roue Canvas */}
+      <div className="relative w-[320px] h-[320px] sm:w-[340px] sm:h-[340px] flex items-center justify-center mb-6 select-none">
         <canvas
           ref={canvasRef}
-          style={{ width: '360px', height: '360px' }}
-          className="w-full h-full rounded-full cursor-pointer touch-none"
+          style={{ width: '340px', height: '340px' }}
+          className="w-full h-full rounded-full cursor-pointer touch-none filter drop-shadow-xl"
           onClick={handleSpin}
         />
       </div>
 
-      {/* BOUTON D'ACTION DYNAMIQUE */}
-      <button
+      {/* BOUTON D'ACTION BLEU NUIT (#0A192F) */}
+      <motion.button
+        whileHover={{ scale: isSpinning || hasSpun ? 1 : 1.02 }}
+        whileTap={{ scale: isSpinning || hasSpun ? 1 : 0.98 }}
         onClick={handleSpin}
         disabled={isSpinning || hasSpun}
-        className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl text-white font-black text-base shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
-        style={{
-          backgroundColor: primaryColor,
-          boxShadow: `0 10px 25px -5px ${primaryColor}80`
-        }}
+        className="w-full max-w-xs py-4 px-6 rounded-2xl bg-[#0A192F] hover:bg-[#112240] text-white font-black text-base shadow-xl shadow-slate-900/15 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
       >
         {isSpinning ? (
           <div className="flex items-center gap-2">
@@ -556,32 +394,27 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
             <span>Tirage en cours...</span>
           </div>
         ) : hasSpun ? (
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-300" />
+          <div className="flex items-center gap-2 text-amber-300">
+            <Sparkles className="w-5 h-5" />
             <span>Cadeau Remporté !</span>
           </div>
         ) : (
           <>
-            <Gift className="w-5 h-5" />
-            <span>Lancer la Roue</span>
+            <span>Tourner la roue</span>
           </>
         )}
-      </button>
+      </motion.button>
 
-      {/* Libellé du gain */}
+      {/* Gain affiché à la fin */}
       {winningReward && !isSpinning && (
         <motion.div
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3 text-center text-xs font-bold text-amber-300 animate-pulse"
+          className="mt-3 text-center text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-xl"
         >
-          🎁 Vous avez gagné : <strong>{winningReward.label}</strong>
+          🎁 Vous avez remporté : <strong>{winningReward.label}</strong>
         </motion.div>
       )}
-
-      <p className="text-[11px] text-slate-400 mt-3 text-center">
-        🔒 1 participation par client • Offre valable immédiatement
-      </p>
-    </motion.div>
+    </div>
   );
 };
