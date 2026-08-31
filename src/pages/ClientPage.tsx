@@ -157,47 +157,49 @@ export const ClientPage: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* EN-TÊTE CENTRÉ AVEC LOGO (70x70) & TITRE DYNAMIQUE */}
-      <header className="max-w-md w-full mx-auto flex flex-col items-center pt-2 pb-3 text-center z-10">
-        {/* Bouton restauration coupon si actif */}
-        {activeSavedPrize && step === 'rating' && (
-          <div className="w-full flex justify-end mb-2">
-            <button
-              onClick={handleRestoreVoucher}
-              className="text-xs font-bold tracking-wider text-amber-700 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm transition-all cursor-pointer animate-pulse"
-            >
-              <Ticket className="w-3.5 h-3.5 text-amber-600" />
-              <span>Voir mon coupon actif</span>
-            </button>
-          </div>
-        )}
-
-        {/* Logo de l'établissement rond 70x70px */}
-        <div className="w-[70px] h-[70px] rounded-full bg-white border border-slate-100 shadow-md flex items-center justify-center p-1.5 mb-3">
-          {restaurant.logo_url ? (
-            <img
-              src={restaurant.logo_url}
-              alt={restaurantName}
-              className="w-full h-full rounded-full object-cover"
-            />
-          ) : (
-            <div
-              className="w-full h-full rounded-full flex items-center justify-center text-white font-black text-xl shadow-inner"
-              style={{ backgroundColor: primaryColor }}
-            >
-              <Gift className="w-7 h-7" />
-            </div>
-          )}
+      {/* Bouton restauration coupon si actif */}
+      {activeSavedPrize && (
+        <div className="max-w-md w-full mx-auto flex justify-end mb-2 z-10">
+          <button
+            onClick={handleRestoreVoucher}
+            className="text-xs font-bold tracking-wider text-amber-700 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm transition-all cursor-pointer animate-pulse"
+          >
+            <Ticket className="w-3.5 h-3.5 text-amber-600" />
+            <span>Voir mon coupon actif</span>
+          </button>
         </div>
+      )}
 
-        {/* Titre en 2 lignes */}
-        <h1 className="text-slate-900 font-extrabold text-2xl sm:text-3xl tracking-tight leading-tight">
-          Tournez la roue et
-        </h1>
-        <h2 className="text-indigo-600 font-black text-2xl sm:text-3xl tracking-tight leading-tight mt-0.5">
-          découvrez votre cadeau !
-        </h2>
-      </header>
+      {/* EN-TÊTE CENTRÉ AVEC LOGO (70x70) & TITRE DYNAMIQUE (affiché sur les étapes roue / sas / coupon) */}
+      {step !== 'rating' && (
+        <header className="max-w-md w-full mx-auto flex flex-col items-center pt-2 pb-3 text-center z-10">
+          {/* Logo de l'établissement rond 70x70px */}
+          <div className="w-[70px] h-[70px] rounded-full bg-white border border-slate-100 shadow-md flex items-center justify-center p-1.5 mb-3">
+            {restaurant.logo_url ? (
+              <img
+                src={restaurant.logo_url}
+                alt={restaurantName}
+                className="w-full h-full rounded-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full rounded-full flex items-center justify-center text-white font-black text-xl shadow-inner"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Gift className="w-7 h-7" />
+              </div>
+            )}
+          </div>
+
+          {/* Titre en 2 lignes */}
+          <h1 className="text-slate-900 font-extrabold text-2xl sm:text-3xl tracking-tight leading-tight">
+            Tournez la roue et
+          </h1>
+          <h2 className="text-indigo-600 font-black text-2xl sm:text-3xl tracking-tight leading-tight mt-0.5">
+            découvrez votre cadeau !
+          </h2>
+        </header>
+      )}
 
       {/* ZONE CENTRALE DE JEU & ÉTAPES */}
       <main className="my-auto py-3 flex items-center justify-center w-full z-10">
@@ -212,10 +214,14 @@ export const ClientPage: React.FC = () => {
             >
               <StarRating
                 restaurantName={restaurantName}
+                logoUrl={restaurant.logo_url}
+                bannerUrl={restaurant.banner_url}
+                primaryColor={primaryColor}
                 onRatingSelected={handleRatingSelected}
               />
             </motion.div>
           )}
+
 
           {step === 'google_redirect' && (
             <motion.div

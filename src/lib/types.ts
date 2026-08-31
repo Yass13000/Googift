@@ -3,6 +3,7 @@ export interface Restaurant {
   name: string;
   slug: string; // Ex: 'lospollos'
   logo_url: string | null;
+  banner_url?: string | null;
   google_review_url: string;
   star_threshold: number; // 4 ou 5
   primary_color: string;
@@ -14,6 +15,7 @@ export interface Restaurant {
   created_at?: string;
   updated_at?: string;
 }
+
 
 export interface RestaurantUser {
   id: string;
