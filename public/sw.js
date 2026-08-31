@@ -1,4 +1,5 @@
-const CACHE_NAME = 'gogift-cache-v1';
+const CACHE_NAME = 'gogift-cache-v2';
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
