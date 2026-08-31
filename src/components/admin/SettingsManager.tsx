@@ -249,11 +249,25 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ restaurant, on
               onChange={(url) => setSettings({ ...settings, logo_url: url })}
               folder="logos"
               restaurantId={settings.id}
-              label="Logo de l'Établissement (Affiché sur la Borne et les Avis)"
+              label="Logo de l'Établissement (Affiché en médaillon et sur les Avis)"
               helperText="PNG détouré ou SVG recommandé (Max 5 Mo)"
               aspectRatio="square"
             />
           </div>
+
+          {/* Restaurant Banner Uploader */}
+          <div>
+            <ImageUploader
+              value={settings.banner_url}
+              onChange={(url) => setSettings({ ...settings, banner_url: url })}
+              folder="banners"
+              restaurantId={settings.id}
+              label="Bannière d'Accueil de l'Établissement (Affichée en haut de l'écran d'avis)"
+              helperText="Format paysage 1200x500px recommandé, JPG/PNG jusqu'à 5 Mo"
+              aspectRatio="wide"
+            />
+          </div>
+
 
 
 

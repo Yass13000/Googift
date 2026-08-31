@@ -12,11 +12,13 @@ export const DEFAULT_RESTAURANT: Restaurant = {
   name: 'Restaurant Démo',
   slug: 'demo',
   logo_url: null,
+  banner_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
   google_review_url: 'https://search.google.com/local/writereview?placeid=VOTRE_PLACE_ID',
   star_threshold: 4,
   primary_color: '#E11D48',
   pin_code: '1234',
 };
+
 
 export const DEFAULT_REWARDS: Reward[] = [
   { id: '1', restaurant_id: 'demo01', label: 'Café offert', icon: 'Coffee', image_url: null, color: '#EF4444', probability: 30, max_claims: null, current_claims: 0, is_active: true, display_order: 1 },
@@ -422,6 +424,7 @@ export async function saveRestaurantSettings(
       theme_accent: settings.theme_accent || '#10B981',
       theme_background: settings.theme_background || '#0F172A',
       logo_url: settings.logo_url ? settings.logo_url.trim() : null,
+      banner_url: settings.banner_url ? settings.banner_url.trim() : null,
       pin_code: settings.pin_code ? settings.pin_code.trim() : '1234',
       updated_at: new Date().toISOString()
     };
@@ -435,9 +438,11 @@ export async function saveRestaurantSettings(
       star_threshold: Number(settings.star_threshold) || 4,
       primary_color: settings.primary_color || '#E11D48',
       logo_url: settings.logo_url ? settings.logo_url.trim() : null,
+      banner_url: settings.banner_url ? settings.banner_url.trim() : null,
       pin_code: settings.pin_code ? settings.pin_code.trim() : '1234',
       updated_at: new Date().toISOString()
     };
+
 
     // 1. Try UPDATE on 'restaurants' (by slug first if short code, or by id if UUID)
     let updateData: any = null;

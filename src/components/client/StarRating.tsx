@@ -11,7 +11,8 @@ interface StarRatingProps {
 }
 
 const DEFAULT_BANNER =
-  'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&auto=format&fit=crop&q=80';
+  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop';
+
 
 export const StarRating: React.FC<StarRatingProps> = ({
   onRatingSelected,

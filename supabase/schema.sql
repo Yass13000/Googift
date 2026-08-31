@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
     name TEXT NOT NULL,
     slug TEXT NOT NULL UNIQUE, -- Ex: 'lospollos', 'demo'
     logo_url TEXT,
+    banner_url TEXT,
     google_review_url TEXT NOT NULL DEFAULT 'https://search.google.com/local/writereview?placeid=VOTRE_PLACE_ID',
     star_threshold INT NOT NULL DEFAULT 4, -- 4 ou 5
     primary_color TEXT NOT NULL DEFAULT '#E11D48',
@@ -23,12 +24,14 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Assurer la présence des colonnes de thème si la table existait déjà
+-- Assurer la présence des colonnes si la table existait déjà
+ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS banner_url TEXT;
 ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS theme_primary TEXT DEFAULT '#E11D48';
 ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS theme_secondary TEXT DEFAULT '#F59E0B';
 ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS theme_accent TEXT DEFAULT '#10B981';
 ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS theme_background TEXT DEFAULT '#0F172A';
 ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS pin_code VARCHAR(10) DEFAULT '1234';
+
 
 -- 3. TABLE DES LOTS DE LA ROUE (CLOISONNÉ PAR RESTAURANT)
 CREATE TABLE IF NOT EXISTS public.rewards (

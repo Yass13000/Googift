@@ -6,12 +6,13 @@ import { uploadImage } from '../../lib/storage';
 interface ImageUploaderProps {
   value?: string | null;
   onChange: (url: string) => void;
-  folder: 'logos' | 'rewards';
+  folder: 'logos' | 'rewards' | 'banners';
   restaurantId: string;
   label?: string;
   helperText?: string;
   aspectRatio?: 'square' | 'circle' | 'wide';
 }
+
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
   value,

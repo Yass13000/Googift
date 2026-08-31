@@ -10,9 +10,10 @@ export interface UploadImageResult {
  */
 export async function uploadImage(
   file: File,
-  folder: 'logos' | 'rewards',
+  folder: 'logos' | 'rewards' | 'banners',
   restaurantId: string
 ): Promise<UploadImageResult> {
+
   try {
     // Validate file type
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml', 'image/gif'];
