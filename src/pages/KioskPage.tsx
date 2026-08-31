@@ -31,8 +31,9 @@ export const KioskPage: React.FC = () => {
       const restData = await getRestaurant(slug);
       setRestaurant(restData);
 
-      const activeRewards = await getActiveRewards(restData.id);
+      const activeRewards = await getActiveRewards(restData.id, restData.slug);
       setRewards(activeRewards);
+
       setLoading(false);
 
       // Store in localStorage for persistent kiosk recovery

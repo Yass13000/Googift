@@ -194,8 +194,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
         <main className="flex-1 p-4 sm:p-8 max-w-6xl mx-auto w-full">
           {activeTab === 'stats' && <DashboardStats restaurantId={restaurant.id} />}
-          {activeTab === 'rewards' && <RewardsManager restaurantId={restaurant.id} />}
+          {activeTab === 'rewards' && <RewardsManager restaurantId={restaurant.id} restaurantSlug={restaurant.slug} />}
           {activeTab === 'reviews' && <ReviewsInbox restaurantId={restaurant.id} />}
+
           {activeTab === 'history' && <ClaimHistory restaurantId={restaurant.id} />}
           {activeTab === 'poster' && <TableQrPoster restaurant={restaurant} />}
           {activeTab === 'settings' && (

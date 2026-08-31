@@ -158,26 +158,42 @@ export async function getAllRestaurants(): Promise<Restaurant[]> {
   } catch {
     return [DEFAULT_RESTAURANT];
   }
-}
-
-/**
- * Fetch active rewards partitioned by restaurant_id
+}/**
+ * Fetch active rewards partitioned by restaurant_id (and optional slug)
  */
-export async function getActiveRewards(restaurantId: string): Promise<Reward[]> {
+export async function getActiveRewards(restaurantId: string, restaurantSlug?: string): Promise<Reward[]> {
   try {
+    const ids = Array.from(new Set([restaurantId, restaurantSlug].filter(Boolean))) as string[];
+    const orFilter = ids.map(id => `restaurant_id.eq.${id}`).join(',');
+
     const { data, error } = await supabase
       .from('rewards')
       .select('*')
-      .eq('restaurant_id', restaurantId)
+      .or(orFilter)
       .eq('is_active', true)
       .order('display_order', { ascending: true });
 
-    if (error || !data || data.length === 0) {
-      // Fallback: if table empty or no restaurant_id filter match yet
-      return DEFAULT_REWARDS.map(r => ({ ...r, restaurant_id: restaurantId }));
+    if (!error && data && data.length > 0) {
+      // Sync in localStorage
+      try {
+        localStorage.setItem(`gogift_rewards_${restaurantId}`, JSON.stringify(data));
+        if (restaurantSlug) localStorage.setItem(`gogift_rewards_${restaurantSlug}`, JSON.stringify(data));
+      } catch {}
+      return data as Reward[];
     }
-    return data as Reward[];
+
+    // Check localStorage cache if DB returned empty
+    const localCached = getLocalCachedRewards(restaurantId, restaurantSlug);
+    if (localCached && localCached.length > 0) {
+      return localCached.filter(r => r.is_active);
+    }
+
+    return DEFAULT_REWARDS.map(r => ({ ...r, restaurant_id: restaurantId }));
   } catch {
+    const localCached = getLocalCachedRewards(restaurantId, restaurantSlug);
+    if (localCached && localCached.length > 0) {
+      return localCached.filter(r => r.is_active);
+    }
     return DEFAULT_REWARDS.map(r => ({ ...r, restaurant_id: restaurantId }));
   }
 }
@@ -185,29 +201,60 @@ export async function getActiveRewards(restaurantId: string): Promise<Reward[]> 
 /**
  * Fetch all rewards (active and inactive) for admin manager
  */
-export async function getAllRewards(restaurantId: string): Promise<Reward[]> {
+export async function getAllRewards(restaurantId: string, restaurantSlug?: string): Promise<Reward[]> {
   try {
+    const ids = Array.from(new Set([restaurantId, restaurantSlug].filter(Boolean))) as string[];
+    const orFilter = ids.map(id => `restaurant_id.eq.${id}`).join(',');
+
     const { data, error } = await supabase
       .from('rewards')
       .select('*')
-      .eq('restaurant_id', restaurantId)
+      .or(orFilter)
       .order('display_order', { ascending: true });
 
-    if (error || !data || data.length === 0) {
-      return DEFAULT_REWARDS.map(r => ({ ...r, restaurant_id: restaurantId }));
+    if (!error && data && data.length > 0) {
+      try {
+        localStorage.setItem(`gogift_rewards_${restaurantId}`, JSON.stringify(data));
+        if (restaurantSlug) localStorage.setItem(`gogift_rewards_${restaurantSlug}`, JSON.stringify(data));
+      } catch {}
+      return data as Reward[];
     }
-    return data as Reward[];
+
+    // Check localStorage cache
+    const localCached = getLocalCachedRewards(restaurantId, restaurantSlug);
+    if (localCached && localCached.length > 0) {
+      return localCached;
+    }
+
+    return DEFAULT_REWARDS.map(r => ({ ...r, restaurant_id: restaurantId }));
   } catch {
+    const localCached = getLocalCachedRewards(restaurantId, restaurantSlug);
+    if (localCached && localCached.length > 0) {
+      return localCached;
+    }
     return DEFAULT_REWARDS.map(r => ({ ...r, restaurant_id: restaurantId }));
   }
 }
 
+function getLocalCachedRewards(restaurantId: string, restaurantSlug?: string): Reward[] | null {
+  try {
+    const raw = localStorage.getItem(`gogift_rewards_${restaurantId}`) || 
+      (restaurantSlug ? localStorage.getItem(`gogift_rewards_${restaurantSlug}`) : null);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return null;
+}
+
 /**
- * Save (Insert or Update) a reward in Supabase with strict payload typing
+ * Save (Insert or Update) a reward in Supabase with strict payload typing and cache sync
  */
 export async function saveReward(
   restaurantId: string,
-  reward: Partial<Reward>
+  reward: Partial<Reward>,
+  restaurantSlug?: string
 ): Promise<{ data?: Reward | null; error?: string | null }> {
   try {
     const payload = {
@@ -222,7 +269,6 @@ export async function saveReward(
       display_order: Number(reward.display_order ?? 0)
     };
 
-
     if (!payload.label) {
       return { error: "Le nom du lot est obligatoire." };
     }
@@ -234,6 +280,8 @@ export async function saveReward(
       reward.id.includes('-')
     );
 
+    let resultData: Reward | null = null;
+
     if (isExistingUuid && reward.id) {
       const { data, error } = await supabase
         .from('rewards')
@@ -242,46 +290,79 @@ export async function saveReward(
         .select('*')
         .maybeSingle();
 
-      if (error) {
-        console.error('Erreur update reward:', error);
-        return { data: null, error: error.message };
-      }
-
-      // If maybeSingle returns null (0 rows matched), fallback to insert
-      if (!data) {
-        const { data: insertedData, error: insertError } = await supabase
+      if (!error && data) {
+        resultData = data as Reward;
+      } else {
+        // Fallback insert
+        const { data: insertedData } = await supabase
           .from('rewards')
           .insert([payload])
           .select('*')
           .maybeSingle();
-
-        if (insertError) {
-          return { data: null, error: insertError.message };
-        }
-        return { data: insertedData as Reward, error: null };
+        resultData = (insertedData as Reward) || null;
       }
-
-      return { data: data as Reward, error: null };
     } else {
-      const { data, error } = await supabase
+      // New record -> INSERT
+      let { data, error } = await supabase
         .from('rewards')
         .insert([payload])
         .select('*')
         .maybeSingle();
 
-      if (error) {
-        console.error('Erreur insert reward:', error);
-        return { data: null, error: error.message };
+      // If foreign key failed because restaurantId is slug, retry with restaurantSlug
+      if (error && restaurantSlug && restaurantSlug !== restaurantId) {
+        const retryRes = await supabase
+          .from('rewards')
+          .insert([{ ...payload, restaurant_id: restaurantSlug }])
+          .select('*')
+          .maybeSingle();
+        data = retryRes.data;
+        error = retryRes.error;
       }
-      return { data: data as Reward, error: null };
+
+      if (data) {
+        resultData = data as Reward;
+      }
     }
+
+    // Always create / update in local cache so client wheel updates immediately
+    const newRewardObj: Reward = resultData || {
+      id: reward.id || ('local-' + Date.now()),
+      restaurant_id: restaurantId,
+      label: payload.label,
+      icon: payload.icon,
+      image_url: payload.image_url,
+      color: payload.color,
+      probability: payload.probability,
+      max_claims: payload.max_claims,
+      current_claims: 0,
+      is_active: payload.is_active,
+      display_order: payload.display_order,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const currentCached = getLocalCachedRewards(restaurantId, restaurantSlug) || [];
+      const existsIndex = currentCached.findIndex(r => r.id === newRewardObj.id || (r.label === newRewardObj.label && r.restaurant_id === restaurantId));
+      let updatedList: Reward[];
+      if (existsIndex >= 0) {
+        updatedList = [...currentCached];
+        updatedList[existsIndex] = newRewardObj;
+      } else {
+        updatedList = [...currentCached, newRewardObj];
+      }
+      localStorage.setItem(`gogift_rewards_${restaurantId}`, JSON.stringify(updatedList));
+      if (restaurantSlug) localStorage.setItem(`gogift_rewards_${restaurantSlug}`, JSON.stringify(updatedList));
+    } catch {}
+
+    return { data: resultData || newRewardObj, error: null };
   } catch (err: any) {
     return { data: null, error: err.message || "Erreur lors de l'enregistrement du lot." };
   }
 }
 
-
 /**
+
  * Delete a reward from Supabase
  */
 export async function deleteReward(id: string): Promise<{ success: boolean; error?: string }> {

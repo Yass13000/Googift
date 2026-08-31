@@ -14,9 +14,10 @@ const PRESET_COLORS = [
 
 interface RewardsManagerProps {
   restaurantId: string;
+  restaurantSlug?: string;
 }
 
-export const RewardsManager: React.FC<RewardsManagerProps> = ({ restaurantId }) => {
+export const RewardsManager: React.FC<RewardsManagerProps> = ({ restaurantId, restaurantSlug }) => {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,11 +33,11 @@ export const RewardsManager: React.FC<RewardsManagerProps> = ({ restaurantId }) 
 
   useEffect(() => {
     fetchRewards();
-  }, [restaurantId]);
+  }, [restaurantId, restaurantSlug]);
 
   const fetchRewards = async () => {
     setLoading(true);
-    const data = await getAllRewards(restaurantId);
+    const data = await getAllRewards(restaurantId, restaurantSlug);
     setRewards(data);
     setLoading(false);
   };
@@ -71,7 +72,7 @@ export const RewardsManager: React.FC<RewardsManagerProps> = ({ restaurantId }) 
     if (!editingReward || !editingReward.label) return;
     setSaveLoading(true);
 
-    const res = await saveReward(restaurantId, editingReward);
+    const res = await saveReward(restaurantId, editingReward, restaurantSlug);
     setSaveLoading(false);
 
     if (res.error) {
@@ -82,6 +83,7 @@ export const RewardsManager: React.FC<RewardsManagerProps> = ({ restaurantId }) 
       await fetchRewards();
     }
   };
+
 
   const handleDelete = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce lot de la roue ?')) return;

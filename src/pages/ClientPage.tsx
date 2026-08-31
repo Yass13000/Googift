@@ -30,8 +30,9 @@ export const ClientPage: React.FC = () => {
       const restData = await getRestaurant(slug);
       setRestaurant(restData);
 
-      const activeRewards = await getActiveRewards(restData.id);
+      const activeRewards = await getActiveRewards(restData.id, restData.slug);
       setRewards(activeRewards);
+
 
       // Check if there is an active (non-expired) prize for this restaurant in localStorage
       try {
