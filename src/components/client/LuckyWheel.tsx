@@ -22,7 +22,7 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
   primaryColor = '#f16022',
   secondaryColor = '#283b25',
   accentColor = '#b8c073',
-  backgroundColor = '#1e293b',
+  backgroundColor = 'rgba(15, 23, 42, 0.92)',
   logoUrl = null,
   restaurantName = 'Notre Établissement',
 }) => {
@@ -345,7 +345,6 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
     ctx.clip();
 
     if (logoImageRef.current && logoImageRef.current.complete && logoImageRef.current.naturalWidth > 0) {
-      // Fond blanc pour faire ressortir le logo
       ctx.fillStyle = '#FFFFFF';
       ctx.fill();
       ctx.drawImage(
@@ -356,7 +355,6 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
         (hubInnerRadius - 3) * 2
       );
     } else {
-      // Dégradé avec la couleur primaire du restaurant
       const brandHubGrad = ctx.createRadialGradient(center - 4, center - 4, 2, center, center, hubInnerRadius);
       brandHubGrad.addColorStop(0, '#FFFFFF');
       brandHubGrad.addColorStop(0.35, primaryColor);
@@ -468,7 +466,7 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       transition={{ duration: 0.4 }}
       className="flex flex-col items-center p-6 sm:p-8 rounded-3xl sm:rounded-4xl shadow-2xl border border-white/10 max-w-md w-full mx-auto relative overflow-hidden backdrop-blur-2xl"
       style={{
-        backgroundColor: 'rgba(15, 23, 42, 0.92)',
+        backgroundColor: backgroundColor || 'rgba(15, 23, 42, 0.92)',
         boxShadow: `0 20px 50px -15px ${primaryColor}33`,
       }}
     >
