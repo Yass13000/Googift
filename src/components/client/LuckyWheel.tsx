@@ -13,6 +13,8 @@ interface LuckyWheelProps {
   backgroundColor?: string;
   logoUrl?: string | null;
   restaurantName?: string;
+  autoResetSeconds?: number;
+  resetTrigger?: any;
 }
 
 export const LuckyWheel: React.FC<LuckyWheelProps> = ({
@@ -22,6 +24,8 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
   secondaryColor = '#283b25',
   accentColor = '#b8c073',
   logoUrl = null,
+  autoResetSeconds,
+  resetTrigger,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -29,6 +33,9 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
   const [hasSpun, setHasSpun] = useState(false);
   const [pegTick, setPegTick] = useState(false);
   const [winningReward, setWinningReward] = useState<Reward | null>(null);
+
+  // Audio Context Ref partagé
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   // Cache d'images (PNGs des lots & Logo central)
   const imagesCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -65,12 +72,42 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
     });
   }, [rewards]);
 
-  // Synthétiseur audio de cliquetis métallique (Web Audio API)
+  // 3. Réinitialisation Kiosque (auto-reset timer & trigger)
+  useEffect(() => {
+    if (hasSpun && !isSpinning && autoResetSeconds && autoResetSeconds > 0) {
+      const timer = setTimeout(() => {
+        setHasSpun(false);
+        setWinningReward(null);
+        setIsSpinning(false);
+      }, autoResetSeconds * 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasSpun, isSpinning, autoResetSeconds]);
+
+  useEffect(() => {
+    if (resetTrigger !== undefined) {
+      setHasSpun(false);
+      setWinningReward(null);
+      setIsSpinning(false);
+    }
+  }, [resetTrigger]);
+
+  // Synthétiseur audio de cliquetis métallique sécurisé (Web Audio API)
   const playClickSound = useCallback((speedFactor = 1) => {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass =
+        window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContextClass) return;
-      const ctx = new AudioContextClass();
+
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContextClass();
+      }
+      const ctx = audioCtxRef.current;
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -87,11 +124,13 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       osc.start();
       osc.stop(ctx.currentTime + 0.035);
 
-      if (navigator.vibrate) {
-        navigator.vibrate(8);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(8);
+        } catch {}
       }
     } catch {
-      // Audio context silencieux si bloqué
+      // Audio context silencieux : ne bloque jamais l'animation
     }
   }, []);
 
@@ -102,14 +141,13 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
     const brandPalette = [primaryColor, secondaryColor, accentColor, '#1E293B'];
     let color = brandPalette[index % brandPalette.length];
 
-    // Évite d'avoir la même couleur sur le premier et le dernier segment
     if (index === total - 1 && color === brandPalette[0]) {
       color = brandPalette[1 % brandPalette.length];
     }
     return color;
   };
 
-  // Algorithme de calcul typographique adaptatif (aucun texte coupé)
+  // Algorithme de calcul typographique adaptatif
   const getWrappedText = (
     ctx: CanvasRenderingContext2D,
     text: string,
@@ -135,7 +173,10 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       }
       lines.push(currentLine);
 
-      if (lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= maxWidth)) {
+      if (
+        lines.length <= maxLines &&
+        lines.every((l) => ctx.measureText(l).width <= maxWidth)
+      ) {
         return { lines, fontSize, lineHeight: fontSize * 1.15 };
       }
       fontSize -= 0.5;
@@ -262,8 +303,11 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
         const availableLength = maxLabelRadius - minLabelRadius;
 
         // Dessin de l'image PNG si présente
-        const cachedImg = reward.image_url ? imagesCacheRef.current.get(reward.image_url) : null;
-        const hasImage = cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0;
+        const cachedImg = reward.image_url
+          ? imagesCacheRef.current.get(reward.image_url)
+          : null;
+        const hasImage =
+          cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0;
 
         if (hasImage && cachedImg) {
           const imgSize = Math.min(36, segmentAngle * radius * 0.42);
@@ -279,7 +323,12 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
 
         // Dessin du texte dynamique
         const textMaxWidth = hasImage ? availableLength - 34 : availableLength;
-        const { lines, fontSize, lineHeight } = getWrappedText(ctx, reward.label, textMaxWidth, 2);
+        const { lines, fontSize, lineHeight } = getWrappedText(
+          ctx,
+          reward.label,
+          textMaxWidth,
+          2
+        );
 
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
@@ -331,7 +380,12 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       ctx.fill();
 
       // Couronne chromée centrale
-      const hubChrome = ctx.createLinearGradient(center - 32, center - 32, center + 32, center + 32);
+      const hubChrome = ctx.createLinearGradient(
+        center - 32,
+        center - 32,
+        center + 32,
+        center + 32
+      );
       hubChrome.addColorStop(0, '#FFFFFF');
       hubChrome.addColorStop(0.5, '#64748B');
       hubChrome.addColorStop(1, '#0F172A');
@@ -396,7 +450,10 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
 
   // Sélection pondérée du lot
   const pickWeightedReward = (): { reward: Reward; index: number } => {
-    const totalProb = rewards.reduce((sum, r) => sum + (Number(r.probability) || 0), 0);
+    const totalProb = rewards.reduce(
+      (sum, r) => sum + (Number(r.probability) || 0),
+      0
+    );
     const rand = Math.random() * (totalProb > 0 ? totalProb : 100);
 
     let cum = 0;
@@ -411,9 +468,22 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
 
   // Animation de rotation avec décélération quartique
   const handleSpin = () => {
+    console.log('Spin triggered', {
+      isSpinning,
+      hasSpun,
+      rewardsCount: rewards.length,
+    });
+
     if (isSpinning || hasSpun || rewards.length === 0) return;
     setIsSpinning(true);
     setHasSpun(true);
+
+    // Initialiser/débloquer l'audio au premier tap utilisateur
+    try {
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    } catch {}
 
     const { reward: winning, index: winningIndex } = pickWeightedReward();
     setWinningReward(winning);
@@ -424,9 +494,12 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
     // Pointeur situé à 12h (angle 3*PI/2)
     const targetSliceAngle = winningIndex * segmentAngle + segmentAngle / 2;
     const baseSpins = 8 * 2 * Math.PI;
-    const targetAngle = (1.5 * Math.PI - targetSliceAngle + 2 * Math.PI) % (2 * Math.PI);
+    const targetAngle =
+      (1.5 * Math.PI - targetSliceAngle + 2 * Math.PI) % (2 * Math.PI);
     const totalSpinRotation =
-      currentRotation + baseSpins + (targetAngle - (currentRotation % (2 * Math.PI)));
+      currentRotation +
+      baseSpins +
+      (targetAngle - (currentRotation % (2 * Math.PI)));
 
     const startTime = performance.now();
     const duration = 5000;
@@ -439,7 +512,8 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
 
       // Courbe Ease-Out quartique
       const easeOut = 1 - Math.pow(1 - progress, 4);
-      const angle = startRotation + (totalSpinRotation - startRotation) * easeOut;
+      const angle =
+        startRotation + (totalSpinRotation - startRotation) * easeOut;
 
       const pinIndex = Math.floor(angle / segmentAngle);
       if (pinIndex !== lastPinTick) {
@@ -463,7 +537,13 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
             particleCount: 100,
             spread: 80,
             origin: { y: 0.6 },
-            colors: [primaryColor, accentColor, '#F59E0B', '#10B981', '#FFFFFF'],
+            colors: [
+              primaryColor,
+              accentColor,
+              '#F59E0B',
+              '#10B981',
+              '#FFFFFF',
+            ],
           });
         } catch {}
 
@@ -478,8 +558,8 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
 
   return (
     <div className="flex flex-col items-center w-full max-w-sm mx-auto">
-      {/* CONTENEUR DE LA ROUE & AIGUILLE 3D (Respirant directement sur le fond clair) */}
-      <div className="relative w-[340px] h-[340px] sm:w-[360px] sm:h-[360px] flex items-center justify-center mb-6 select-none">
+      {/* CONTENEUR DE LA ROUE & AIGUILLE 3D */}
+      <div className="relative w-[340px] h-[340px] sm:w-[360px] sm:h-[360px] flex items-center justify-center mb-6 select-none touch-manipulation">
         {/* Aiguille supérieure stylisée 3D */}
         <motion.div
           animate={{
@@ -506,7 +586,13 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
                 strokeWidth="1.5"
               />
               <defs>
-                <linearGradient id="themeNeedleGrad" x1="0" y1="0" x2="1" y2="1">
+                <linearGradient
+                  id="themeNeedleGrad"
+                  x1="0"
+                  y1="0"
+                  x2="1"
+                  y2="1"
+                >
                   <stop offset="0%" stopColor={primaryColor} />
                   <stop offset="60%" stopColor={accentColor || '#F59E0B'} />
                   <stop offset="100%" stopColor={primaryColor} />
@@ -516,22 +602,32 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
           </div>
         </motion.div>
 
-        {/* Canvas Haute Définition avec ombre portée élégante */}
+        {/* Canvas Haute Définition avec écouteurs de clic & touch */}
         <canvas
           ref={canvasRef}
           style={{ width: '360px', height: '360px' }}
-          className="w-full h-full rounded-full cursor-pointer touch-none filter drop-shadow-2xl"
+          className="w-full h-full rounded-full cursor-pointer touch-manipulation filter drop-shadow-2xl"
           onClick={handleSpin}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleSpin();
+          }}
         />
       </div>
 
-      {/* BOUTON D'ACTION BLEU NUIT / NAVY */}
+      {/* BOUTON D'ACTION BLEU NUIT / NAVY AVEC SUPPORT TOUCH ÉTENDU */}
       <motion.button
         whileHover={{ scale: isSpinning || hasSpun ? 1 : 1.02 }}
         whileTap={{ scale: isSpinning || hasSpun ? 1 : 0.98 }}
         onClick={handleSpin}
+        onTouchEnd={(e) => {
+          if (!isSpinning && !hasSpun) {
+            e.preventDefault();
+            handleSpin();
+          }
+        }}
         disabled={isSpinning || hasSpun}
-        className="w-full max-w-xs py-4 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-base shadow-xl shadow-slate-900/20 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+        className="w-full max-w-xs py-4 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-base shadow-xl shadow-slate-900/20 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer touch-manipulation select-none"
       >
         {isSpinning ? (
           <div className="flex items-center gap-2">
