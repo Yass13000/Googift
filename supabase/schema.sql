@@ -73,9 +73,34 @@ CREATE TABLE IF NOT EXISTS public.claimed_prizes (
     reward_id UUID REFERENCES public.rewards(id) ON DELETE SET NULL,
     reward_label TEXT NOT NULL,
     claim_code TEXT NOT NULL UNIQUE,
+    customer_name TEXT,
+    customer_phone TEXT,
+    customer_email TEXT,
+    optin_marketing BOOLEAN DEFAULT true,
     is_redeemed BOOLEAN DEFAULT false,
     redeemed_at TIMESTAMP WITH TIME ZONE,
     expires_at TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '30 minutes'),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Assurer la présence des colonnes de leads si la table existait déjà
+ALTER TABLE public.claimed_prizes ADD COLUMN IF NOT EXISTS customer_name TEXT;
+ALTER TABLE public.claimed_prizes ADD COLUMN IF NOT EXISTS customer_phone TEXT;
+ALTER TABLE public.claimed_prizes ADD COLUMN IF NOT EXISTS customer_email TEXT;
+ALTER TABLE public.claimed_prizes ADD COLUMN IF NOT EXISTS optin_marketing BOOLEAN DEFAULT true;
+
+-- 5.1 TABLE COMPLÈTE DES SESSIONS DE JEU / SPINS (LEADS MARKETING)
+CREATE TABLE IF NOT EXISTS public.wheel_spins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    restaurant_id VARCHAR(6) NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    reward_id UUID REFERENCES public.rewards(id) ON DELETE SET NULL,
+    reward_name TEXT NOT NULL,
+    customer_name TEXT,
+    customer_phone TEXT,
+    customer_email TEXT,
+    optin_marketing BOOLEAN DEFAULT true,
+    claim_code TEXT,
+    claimed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -83,7 +108,13 @@ CREATE TABLE IF NOT EXISTS public.claimed_prizes (
 CREATE INDEX IF NOT EXISTS idx_rewards_restaurant_id ON public.rewards(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_restaurant_id ON public.reviews_feedback(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_claimed_prizes_restaurant_id ON public.claimed_prizes(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_wheel_spins_restaurant_id ON public.wheel_spins(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_restaurants_slug ON public.restaurants(slug);
+
+ALTER TABLE public.wheel_spins ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Acces complet wheel_spins" ON public.wheel_spins;
+CREATE POLICY "Acces complet wheel_spins" ON public.wheel_spins FOR ALL USING (true) WITH CHECK (true);
+
 
 -- 6. POLITIQUES DE SÉCURITÉ ROW LEVEL SECURITY (RLS OUVERTES & ROBUSTES)
 ALTER TABLE public.restaurants ENABLE ROW LEVEL SECURITY;

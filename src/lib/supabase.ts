@@ -592,43 +592,101 @@ export async function submitReviewFeedback(feedback: {
   }
 }
 
+export interface CustomerLeadInfo {
+  name: string;
+  phone: string;
+  email: string;
+  optin?: boolean;
+}
+
 /**
- * Create a claimed prize coupon partitioned by restaurant_id
+ * Create a claimed prize coupon partitioned by restaurant_id and save customer lead
  */
 export async function createClaimedPrize(
   restaurantId: string,
   rewardId: string | null,
-  rewardLabel: string
+  rewardLabel: string,
+  customerInfo?: CustomerLeadInfo
 ): Promise<{ prize?: ClaimedPrize; error?: any }> {
   try {
     const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
     const claim_code = `WIN-${randomChars}`;
     const expires_at = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
+    const payload: any = {
+      restaurant_id: restaurantId,
+      reward_id: rewardId && rewardId.length > 10 ? rewardId : null,
+      reward_label: rewardLabel,
+      claim_code: claim_code,
+      customer_name: customerInfo?.name?.trim() || null,
+      customer_phone: customerInfo?.phone?.trim() || null,
+      customer_email: customerInfo?.email?.trim()?.toLowerCase() || null,
+      optin_marketing: customerInfo?.optin !== false,
+      expires_at: expires_at,
+      is_redeemed: false
+    };
+
     const { data, error } = await supabase
       .from('claimed_prizes')
-      .insert([
-        {
-          restaurant_id: restaurantId,
-          reward_id: rewardId && rewardId.length > 10 ? rewardId : null,
-          reward_label: rewardLabel,
-          claim_code: claim_code,
-          expires_at: expires_at,
-          is_redeemed: false
-        }
-      ])
+      .insert([payload])
       .select('*')
       .maybeSingle();
 
+    // Also log to wheel_spins table if available in Supabase
+    if (customerInfo) {
+      try {
+        supabase
+          .from('wheel_spins')
+          .insert([
+            {
+              restaurant_id: restaurantId,
+              reward_id: rewardId,
+              reward_name: rewardLabel,
+              customer_name: customerInfo.name.trim(),
+              customer_phone: customerInfo.phone.trim(),
+              customer_email: customerInfo.email.trim().toLowerCase(),
+              optin_marketing: customerInfo.optin !== false,
+              claimed_at: new Date().toISOString(),
+              claim_code: claim_code,
+            }
+          ])
+          .then(() => {}, () => {});
+      } catch {}
+    }
+
 
     if (error) {
-      console.warn('Supabase prize creation fallback:', error);
+      console.warn('Supabase prize creation fallback (trying standard schema):', error);
+      // Fallback without customer lead fields in case columns are not yet in DB
+      const { data: baseData, error: baseError } = await supabase
+        .from('claimed_prizes')
+        .insert([
+          {
+            restaurant_id: restaurantId,
+            reward_id: rewardId && rewardId.length > 10 ? rewardId : null,
+            reward_label: rewardLabel,
+            claim_code: claim_code,
+            expires_at: expires_at,
+            is_redeemed: false
+          }
+        ])
+        .select('*')
+        .maybeSingle();
+
+      if (!baseError && baseData) {
+        return { prize: { ...baseData, ...payload } as ClaimedPrize };
+      }
+
       const fallbackPrize: ClaimedPrize = {
         id: crypto.randomUUID?.() || 'local-' + Date.now(),
         restaurant_id: restaurantId,
         reward_id: rewardId,
         reward_label: rewardLabel,
         claim_code: claim_code,
+        customer_name: customerInfo?.name || null,
+        customer_phone: customerInfo?.phone || null,
+        customer_email: customerInfo?.email || null,
+        optin_marketing: customerInfo?.optin !== false,
         is_redeemed: false,
         redeemed_at: null,
         expires_at: expires_at,
@@ -655,6 +713,10 @@ export async function createClaimedPrize(
       reward_id: rewardId,
       reward_label: rewardLabel,
       claim_code: `WIN-${randomChars}`,
+      customer_name: customerInfo?.name || null,
+      customer_phone: customerInfo?.phone || null,
+      customer_email: customerInfo?.email || null,
+      optin_marketing: customerInfo?.optin !== false,
       is_redeemed: false,
       redeemed_at: null,
       expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
@@ -663,6 +725,7 @@ export async function createClaimedPrize(
     return { prize: fallbackPrize };
   }
 }
+
 
 /**
  * Find a prize by claim code (and optional restaurantId filter)

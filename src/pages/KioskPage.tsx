@@ -23,12 +23,14 @@ import { GoogleReviewGate } from '../components/client/GoogleReviewGate';
 import { PrivateFeedbackForm } from '../components/client/PrivateFeedbackForm';
 import { LuckyWheel } from '../components/client/LuckyWheel';
 import { PrizeVoucher } from '../components/client/PrizeVoucher';
+import { ClaimRewardModal, type CustomerLeadData } from '../components/client/ClaimRewardModal';
 
 const DEFAULT_BANNER =
   'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop';
 
 type KioskView = 'qr_screen' | 'play_game';
-type GameStep = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'voucher';
+type GameStep = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'lead_capture' | 'voucher';
+
 
 export const KioskPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -192,17 +194,24 @@ export const KioskPage: React.FC = () => {
     }
   };
 
-  const handleRewardWon = async (reward: Reward) => {
-    if (!restaurant) return;
+  const handleRewardWon = (reward: Reward) => {
     setWonRewardInfo(reward);
+    setGameStep('lead_capture');
+    startInactivityAutoReset();
+  };
 
-    // Save Claim in Supabase
-    const { prize } = await createClaimedPrize(restaurant.id, reward.id, reward.label);
+  const handleLeadSubmit = async (leadData: CustomerLeadData) => {
+    if (!restaurant || !wonRewardInfo) return;
+    const { prize } = await createClaimedPrize(
+      restaurant.id,
+      wonRewardInfo.id,
+      wonRewardInfo.label,
+      leadData
+    );
     if (prize) {
       setWonPrize(prize);
     }
     setGameStep('voucher');
-
 
     // Auto return to QR home screen after 30s so the kiosk is fresh for next client
     if (resetKioskTimeoutRef.current) clearTimeout(resetKioskTimeoutRef.current);
@@ -210,6 +219,7 @@ export const KioskPage: React.FC = () => {
       handleReturnToQr();
     }, 30000);
   };
+
 
   if (loading || !restaurant) {
     return (
@@ -510,7 +520,17 @@ export const KioskPage: React.FC = () => {
               </motion.div>
             )}
 
+            {gameStep === 'lead_capture' && wonRewardInfo && (
+              <ClaimRewardModal
+                reward={wonRewardInfo}
+                restaurantName={restaurant.name}
+                primaryColor={primaryColor}
+                onSubmit={handleLeadSubmit}
+              />
+            )}
+
             {gameStep === 'voucher' && wonPrize && (
+
               <motion.div
                 key="kiosk_voucher"
                 initial={{ opacity: 0, scale: 0.9 }}

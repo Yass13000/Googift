@@ -60,9 +60,14 @@ export interface ClaimedPrize {
   reward_id: string | null;
   reward_label: string;
   claim_code: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  optin_marketing?: boolean;
   is_redeemed: boolean;
   redeemed_at: string | null;
   expires_at: string;
   created_at: string;
 }
+
 

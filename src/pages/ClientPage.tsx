@@ -8,9 +8,11 @@ import { GoogleReviewGate } from '../components/client/GoogleReviewGate';
 import { PrivateFeedbackForm } from '../components/client/PrivateFeedbackForm';
 import { LuckyWheel } from '../components/client/LuckyWheel';
 import { PrizeVoucher } from '../components/client/PrizeVoucher';
+import { ClaimRewardModal, type CustomerLeadData } from '../components/client/ClaimRewardModal';
 import { Gift, Ticket, X, ShieldCheck } from 'lucide-react';
 
-type Step = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'voucher';
+type Step = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'lead_capture' | 'voucher';
+
 
 export const ClientPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -76,20 +78,29 @@ export const ClientPage: React.FC = () => {
     setStep('wheel');
   };
 
-  const handleRewardWon = async (reward: Reward) => {
+  const handleRewardWon = (reward: Reward) => {
     setWonRewardInfo(reward);
-    if (restaurant) {
-      const res = await createClaimedPrize(restaurant.id, reward.id, reward.label);
-      if (res.prize) {
-        setWonPrize(res.prize);
-        setActiveSavedPrize(null);
-        try {
-          localStorage.setItem(`gogift_saved_prize_${restaurant.id}`, JSON.stringify(res.prize));
-        } catch {}
-      }
+    setStep('lead_capture');
+  };
+
+  const handleLeadSubmit = async (leadData: CustomerLeadData) => {
+    if (!restaurant || !wonRewardInfo) return;
+    const res = await createClaimedPrize(
+      restaurant.id,
+      wonRewardInfo.id,
+      wonRewardInfo.label,
+      leadData
+    );
+    if (res.prize) {
+      setWonPrize(res.prize);
+      setActiveSavedPrize(null);
+      try {
+        localStorage.setItem(`gogift_saved_prize_${restaurant.id}`, JSON.stringify(res.prize));
+      } catch {}
     }
     setStep('voucher');
   };
+
 
   const handleRestoreVoucher = () => {
     if (activeSavedPrize) {
@@ -270,6 +281,16 @@ export const ClientPage: React.FC = () => {
               />
             </motion.div>
           )}
+
+          {step === 'lead_capture' && wonRewardInfo && (
+            <ClaimRewardModal
+              reward={wonRewardInfo}
+              restaurantName={restaurantName}
+              primaryColor={primaryColor}
+              onSubmit={handleLeadSubmit}
+            />
+          )}
+
 
           {step === 'voucher' && wonPrize && (
             <motion.div
