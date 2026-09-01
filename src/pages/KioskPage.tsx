@@ -189,14 +189,15 @@ export const KioskPage: React.FC = () => {
 
       {/* 3. BANNIÈRE SUPÉRIEURE & CONTROLES EN HAUT À DROITE */}
       <div className="w-full relative z-10">
-        {/* Image de Bannière Pleine Largeur */}
-        <div className="w-full h-44 sm:h-52 relative overflow-hidden bg-slate-900 shadow-sm">
+        {/* Image de Bannière Pleine Largeur (Agrandie) */}
+        <div className="w-full h-64 sm:h-72 md:h-80 relative overflow-hidden bg-slate-900 shadow-sm">
           <img
             src={restaurant.banner_url || DEFAULT_BANNER}
             alt={restaurant.name}
             className="w-full h-full object-cover opacity-90"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/30" />
+
 
           {/* Boutons de Contrôles & Sortie Secrète (Haut Droite) */}
           <div className="absolute top-4 right-4 flex items-center gap-2 z-30">

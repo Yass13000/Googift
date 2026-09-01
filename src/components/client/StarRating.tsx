@@ -36,14 +36,15 @@ export const StarRating: React.FC<StarRatingProps> = ({
 
   return (
     <div className="w-full flex flex-col items-center">
-      {/* 1. BANNIÈRE PLEINE LARGEUR EN HAUT (100% écran, collée au sommet) */}
-      <div className="w-full h-48 sm:h-56 relative bg-slate-900 overflow-hidden">
+      {/* 1. BANNIÈRE PLEINE LARGEUR EN HAUT (100% écran, plus grande) */}
+      <div className="w-full h-64 sm:h-72 md:h-80 relative bg-slate-900 overflow-hidden">
         <img
           src={bannerUrl || DEFAULT_BANNER}
           alt={restaurantName}
           className="w-full h-full object-cover opacity-90"
         />
       </div>
+
 
       {/* 2. LOGO MÉDAILLON CENTRÉ HORS OVERFLOW (-mt-10) */}
       <div className="-mt-10 relative z-10 mx-auto">
