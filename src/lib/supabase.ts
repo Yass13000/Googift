@@ -604,6 +604,77 @@ export interface CustomerLeadInfo {
 }
 
 /**
+ * Check on Supabase if phone or email has already participated for this restaurant
+ */
+export async function checkCustomerParticipation(
+  restaurantId: string,
+  phone?: string | null,
+  email?: string | null
+): Promise<{ hasParticipated: boolean; existingPrize?: ClaimedPrize | null; reason?: string }> {
+  try {
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
+    const cleanEmail = email ? email.trim().toLowerCase() : null;
+
+    if (!cleanPhone && !cleanEmail) {
+      return { hasParticipated: false };
+    }
+
+    // 1. Check in claimed_prizes
+    let query = supabase
+      .from('claimed_prizes')
+      .select('*')
+      .eq('restaurant_id', restaurantId);
+
+    if (cleanPhone && cleanEmail) {
+      query = query.or(`customer_phone.eq.${cleanPhone},customer_email.eq.${cleanEmail}`);
+    } else if (cleanPhone) {
+      query = query.eq('customer_phone', cleanPhone);
+    } else if (cleanEmail) {
+      query = query.eq('customer_email', cleanEmail);
+    }
+
+    const { data: prizes, error } = await query.order('created_at', { ascending: false }).limit(1);
+
+    if (!error && prizes && prizes.length > 0) {
+      const existing = prizes[0] as ClaimedPrize;
+      const matchedBy = existing.customer_phone === cleanPhone ? 'téléphone' : 'e-mail';
+      return {
+        hasParticipated: true,
+        existingPrize: existing,
+        reason: `Ce numéro de ${matchedBy} a déjà été utilisé pour participer auprès de cet établissement.`
+      };
+    }
+
+    // 2. Also check in wheel_spins
+    let spinQuery = supabase
+      .from('wheel_spins')
+      .select('*')
+      .eq('restaurant_id', restaurantId);
+
+    if (cleanPhone && cleanEmail) {
+      spinQuery = spinQuery.or(`customer_phone.eq.${cleanPhone},customer_email.eq.${cleanEmail}`);
+    } else if (cleanPhone) {
+      spinQuery = spinQuery.eq('customer_phone', cleanPhone);
+    } else if (cleanEmail) {
+      spinQuery = spinQuery.eq('customer_email', cleanEmail);
+    }
+
+    const { data: spins } = await spinQuery.limit(1);
+    if (spins && spins.length > 0) {
+      return {
+        hasParticipated: true,
+        reason: "Ce numéro de téléphone ou cet e-mail a déjà été utilisé pour participer."
+      };
+    }
+
+    return { hasParticipated: false };
+  } catch (err) {
+    console.warn('Silent fallback on participation check:', err);
+    return { hasParticipated: false };
+  }
+}
+
+/**
  * Create a claimed prize coupon partitioned by restaurant_id and save customer lead
  */
 export async function createClaimedPrize(
@@ -611,11 +682,29 @@ export async function createClaimedPrize(
   rewardId: string | null,
   rewardLabel: string,
   customerInfo?: CustomerLeadInfo
-): Promise<{ prize?: ClaimedPrize; error?: any }> {
+): Promise<{ prize?: ClaimedPrize; error?: any; alreadyParticipated?: boolean }> {
+
   try {
+    // Check if phone or email already has participated
+    if (customerInfo?.phone || customerInfo?.email) {
+      const check = await checkCustomerParticipation(
+        restaurantId,
+        customerInfo.phone,
+        customerInfo.email
+      );
+      if (check.hasParticipated) {
+        return {
+          prize: check.existingPrize || undefined,
+          alreadyParticipated: true,
+          error: check.reason || 'ALREADY_PARTICIPATED'
+        };
+      }
+    }
+
     const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
     const claim_code = `WIN-${randomChars}`;
     const expires_at = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
 
     const payload: any = {
       restaurant_id: restaurantId,

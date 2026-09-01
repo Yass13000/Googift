@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Gift, User, Phone, Mail, Sparkles, Loader2, ShieldCheck } from 'lucide-react';
-import type { Reward } from '../../lib/types';
-
+import { Gift, User, Phone, Mail, Sparkles, Loader2, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
+import type { Reward, ClaimedPrize } from '../../lib/types';
 import { DynamicIcon } from '../../lib/icons';
+import { checkCustomerParticipation } from '../../lib/supabase';
 
 export interface CustomerLeadData {
   name: string;
@@ -15,15 +15,19 @@ export interface CustomerLeadData {
 interface ClaimRewardModalProps {
   reward: Reward;
   restaurantName: string;
+  restaurantId?: string;
   primaryColor?: string;
   onSubmit: (lead: CustomerLeadData) => Promise<void>;
+  onRestoreExistingPrize?: (prize: ClaimedPrize) => void;
 }
 
 export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
   reward,
   restaurantName,
+  restaurantId,
   primaryColor = '#7C3AED',
   onSubmit,
+  onRestoreExistingPrize,
 }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,6 +35,7 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
   const [optin, setOptin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingPrizeFound, setExistingPrizeFound] = useState<ClaimedPrize | null>(null);
 
   // Simple French phone formatting (06 12 34 56 78)
   const handlePhoneChange = (val: string) => {
@@ -45,6 +50,7 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setExistingPrizeFound(null);
 
     const cleanName = name.trim();
     const cleanPhone = phone.replace(/\s/g, '');
@@ -67,6 +73,27 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
     }
 
     setLoading(true);
+
+    // ANTI-TRICHE NIVEAUX 2 & 3 : Vérification Téléphone et Email dans Supabase
+    if (restaurantId) {
+      try {
+        const check = await checkCustomerParticipation(restaurantId, cleanPhone, cleanEmail);
+        if (check.hasParticipated) {
+          setError(
+            check.reason ||
+              '⚠️ Ce numéro de téléphone ou cette adresse e-mail a déjà été utilisé pour participer auprès de cet établissement (1 seule participation par client).'
+          );
+          if (check.existingPrize) {
+            setExistingPrizeFound(check.existingPrize);
+          }
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // En cas d'indisponibilité réseau, laisser passer
+      }
+    }
+
     try {
       await onSubmit({
         name: cleanName,
@@ -138,9 +165,24 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
             <motion.div
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold"
+              className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs font-semibold leading-relaxed space-y-2"
             >
-              {error}
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+
+              {existingPrizeFound && onRestoreExistingPrize && (
+                <button
+                  type="button"
+                  onClick={() => onRestoreExistingPrize(existingPrizeFound)}
+                  className="w-full py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  <span>Afficher mon bon cadeau existant ({existingPrizeFound.claim_code})</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </motion.div>
           )}
 
@@ -217,7 +259,7 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Génération du coupon en cours...</span>
+                <span>Vérification & Génération du coupon...</span>
               </>
             ) : (
               <>
@@ -230,7 +272,7 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
           {/* Footer RGPD sécurisé */}
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 pt-2 text-center">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Vos données sont 100% sécurisées et confidentielles</span>
+            <span>1 seule participation par client • Données 100% sécurisées</span>
           </div>
         </form>
       </motion.div>

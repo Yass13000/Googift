@@ -11,8 +11,7 @@ import { PrizeVoucher } from '../components/client/PrizeVoucher';
 import { ClaimRewardModal, type CustomerLeadData } from '../components/client/ClaimRewardModal';
 import { Gift, Ticket, X, ShieldCheck } from 'lucide-react';
 
-type Step = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'lead_capture' | 'voucher';
-
+type Step = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'lead_capture' | 'voucher' | 'already_played';
 
 export const ClientPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -24,6 +23,7 @@ export const ClientPage: React.FC = () => {
   const [wonRewardInfo, setWonRewardInfo] = useState<Reward | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSavedPrize, setActiveSavedPrize] = useState<ClaimedPrize | null>(null);
+  const [hasPlayedOnDevice, setHasPlayedOnDevice] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
 
   useEffect(() => {
@@ -35,8 +35,13 @@ export const ClientPage: React.FC = () => {
       const activeRewards = await getActiveRewards(restData.id, restData.slug);
       setRewards(activeRewards);
 
-      // Check if there is an active (non-expired) prize for this restaurant in localStorage
+      // ANTI-TRICHE NIVEAU 1 : Vérification de l'appareil (localStorage)
       try {
+        const playedTimestamp = localStorage.getItem(`gogift_has_played_${restData.id}`);
+        if (playedTimestamp) {
+          setHasPlayedOnDevice(true);
+        }
+
         const savedJson =
           localStorage.getItem(`gogift_saved_prize_${restData.id}`) ||
           localStorage.getItem('gogift_saved_prize');
@@ -58,6 +63,19 @@ export const ClientPage: React.FC = () => {
 
   const handleRatingSelected = (rating: number) => {
     setUserRating(rating);
+
+    // Si le joueur a déjà joué sur cet appareil
+    if (hasPlayedOnDevice) {
+      if (activeSavedPrize) {
+        setWonPrize(activeSavedPrize);
+        setStep('voucher');
+        return;
+      } else {
+        setStep('already_played');
+        return;
+      }
+    }
+
     const threshold = restaurant?.star_threshold || 4;
     if (rating >= threshold) {
       if (restaurant) {
@@ -91,16 +109,29 @@ export const ClientPage: React.FC = () => {
       wonRewardInfo.label,
       leadData
     );
+
+    if (res.alreadyParticipated) {
+      if (res.prize) {
+        setWonPrize(res.prize);
+        setActiveSavedPrize(res.prize);
+        setStep('voucher');
+      } else {
+        setStep('already_played');
+      }
+      return;
+    }
+
     if (res.prize) {
       setWonPrize(res.prize);
       setActiveSavedPrize(null);
       try {
         localStorage.setItem(`gogift_saved_prize_${restaurant.id}`, JSON.stringify(res.prize));
+        localStorage.setItem(`gogift_has_played_${restaurant.id}`, new Date().toISOString());
+        setHasPlayedOnDevice(true);
       } catch {}
     }
     setStep('voucher');
   };
-
 
   const handleRestoreVoucher = () => {
     if (activeSavedPrize) {
@@ -108,6 +139,7 @@ export const ClientPage: React.FC = () => {
       setStep('voucher');
     }
   };
+
 
   if (loading || !restaurant) {
     return (
@@ -286,11 +318,54 @@ export const ClientPage: React.FC = () => {
             <ClaimRewardModal
               reward={wonRewardInfo}
               restaurantName={restaurantName}
+              restaurantId={restaurant.id}
               primaryColor={primaryColor}
               onSubmit={handleLeadSubmit}
+              onRestoreExistingPrize={(prize) => {
+                setWonPrize(prize);
+                setStep('voucher');
+              }}
             />
           )}
 
+          {step === 'already_played' && (
+            <motion.div
+              key="already_played"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-sm mx-auto bg-white rounded-3xl p-7 shadow-xl border border-slate-100 text-center"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-4 shadow-xs">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                Participation déjà enregistrée
+              </h3>
+
+              <p className="text-slate-500 text-xs mt-2 leading-relaxed">
+                Une seule participation par client est autorisée auprès de <strong className="text-slate-800">{restaurantName}</strong>.
+              </p>
+
+              <div className="mt-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-600 text-left space-y-1">
+                <p className="font-bold text-slate-800">Besoin d'aide ?</p>
+                <p className="text-[11px] text-slate-500">
+                  Si vous avez déjà gagné un lot aujourd'hui, présentez votre récapitulatif ou sollicitez un membre de l'équipe en salle ou en caisse.
+                </p>
+              </div>
+
+              {restaurant.google_review_url && (
+                <a
+                  href={restaurant.google_review_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                >
+                  <span>Voir la page de l'établissement</span>
+                </a>
+              )}
+            </motion.div>
+          )}
 
           {step === 'voucher' && wonPrize && (
             <motion.div
@@ -307,6 +382,7 @@ export const ClientPage: React.FC = () => {
               />
             </motion.div>
           )}
+
         </AnimatePresence>
       </main>
 
