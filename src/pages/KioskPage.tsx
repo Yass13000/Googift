@@ -2,13 +2,33 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Sparkles, Lock, Maximize, Minimize, X, ShieldAlert, Smartphone } from 'lucide-react';
-import { getRestaurant, getActiveRewards } from '../lib/supabase';
-import type { Restaurant, Reward } from '../lib/types';
+import {
+  Gift,
+  Sparkles,
+  Lock,
+  Maximize,
+  Minimize,
+  X,
+  ShieldAlert,
+  Smartphone,
+  ArrowLeft,
+  RotateCcw,
+} from 'lucide-react';
+import { getRestaurant, getActiveRewards, createClaimedPrize } from '../lib/supabase';
+
+import type { Restaurant, Reward, ClaimedPrize } from '../lib/types';
 import { DynamicIcon } from '../lib/icons';
+import { StarRating } from '../components/client/StarRating';
+import { GoogleReviewGate } from '../components/client/GoogleReviewGate';
+import { PrivateFeedbackForm } from '../components/client/PrivateFeedbackForm';
+import { LuckyWheel } from '../components/client/LuckyWheel';
+import { PrizeVoucher } from '../components/client/PrizeVoucher';
 
 const DEFAULT_BANNER =
   'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop';
+
+type KioskView = 'qr_screen' | 'play_game';
+type GameStep = 'rating' | 'google_redirect' | 'private_feedback' | 'wheel' | 'voucher';
 
 export const KioskPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -18,6 +38,16 @@ export const KioskPage: React.FC = () => {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Kiosk Mode Switch (QR Screen vs Interactive Play)
+  const [kioskView, setKioskView] = useState<KioskView>('qr_screen');
+  const [gameStep, setGameStep] = useState<GameStep>('rating');
+  const [userRating, setUserRating] = useState(5);
+  const [wonPrize, setWonPrize] = useState<ClaimedPrize | null>(null);
+  const [wonRewardInfo, setWonRewardInfo] = useState<Reward | null>(null);
+
+  // Auto-reset timer for in-kiosk game (35 seconds of inactivity returns to QR screen)
+  const resetKioskTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Anti-tamper 5-tap state
   const [tapCount, setTapCount] = useState(0);
@@ -45,6 +75,22 @@ export const KioskPage: React.FC = () => {
     }
     loadKiosk();
   }, [slug]);
+
+  // Reset timer handler when in interactive play mode
+  const startInactivityAutoReset = () => {
+    if (resetKioskTimeoutRef.current) clearTimeout(resetKioskTimeoutRef.current);
+    resetKioskTimeoutRef.current = setTimeout(() => {
+      handleReturnToQr();
+    }, 35000);
+  };
+
+  const handleReturnToQr = () => {
+    if (resetKioskTimeoutRef.current) clearTimeout(resetKioskTimeoutRef.current);
+    setKioskView('qr_screen');
+    setGameStep('rating');
+    setWonPrize(null);
+    setWonRewardInfo(null);
+  };
 
   // Fullscreen change listener
   useEffect(() => {
@@ -133,6 +179,38 @@ export const KioskPage: React.FC = () => {
     setEnteredPin((prev) => prev.slice(0, -1));
   };
 
+  // In-kiosk play game handlers
+  const handleRatingSelected = (rating: number) => {
+    setUserRating(rating);
+    startInactivityAutoReset();
+
+    const threshold = restaurant?.star_threshold || 4;
+    if (rating >= threshold) {
+      setGameStep('google_redirect');
+    } else {
+      setGameStep('private_feedback');
+    }
+  };
+
+  const handleRewardWon = async (reward: Reward) => {
+    if (!restaurant) return;
+    setWonRewardInfo(reward);
+
+    // Save Claim in Supabase
+    const { prize } = await createClaimedPrize(restaurant.id, reward.id, reward.label);
+    if (prize) {
+      setWonPrize(prize);
+    }
+    setGameStep('voucher');
+
+
+    // Auto return to QR home screen after 30s so the kiosk is fresh for next client
+    if (resetKioskTimeoutRef.current) clearTimeout(resetKioskTimeoutRef.current);
+    resetKioskTimeoutRef.current = setTimeout(() => {
+      handleReturnToQr();
+    }, 30000);
+  };
+
   if (loading || !restaurant) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
@@ -187,19 +265,30 @@ export const KioskPage: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* 3. BANNIÈRE SUPÉRIEURE & MÉDAILLON LOGO */}
+      {/* 3. BANNIÈRE SUPÉRIEURE PLUS IMPOSANTE (28vh / 32vh) & MÉDAILLON LOGO (112px / 128px) */}
       <div className="w-full relative z-10 shrink-0">
         {/* Image de Bannière Pleine Largeur */}
-        <div className="w-full h-44 sm:h-52 md:h-60 relative overflow-hidden bg-slate-900 shadow-sm">
+        <div className="w-full h-[28vh] md:h-[32vh] min-h-[190px] relative overflow-hidden bg-slate-900 shadow-sm">
           <img
             src={restaurant.banner_url || DEFAULT_BANNER}
             alt={restaurant.name}
             className="w-full h-full object-cover opacity-90"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30" />
 
           {/* Boutons de Contrôles & Sortie Secrète (Haut Droite) */}
           <div className="absolute top-4 right-4 flex items-center gap-2 z-30">
+            {/* Si en jeu interactif, bouton pour revenir à l'écran QR */}
+            {kioskView === 'play_game' && (
+              <button
+                onClick={handleReturnToQr}
+                className="px-3.5 py-2 bg-white/90 hover:bg-white text-slate-900 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Accueil QR</span>
+              </button>
+            )}
+
             {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
@@ -225,9 +314,9 @@ export const KioskPage: React.FC = () => {
           </div>
         </div>
 
-        {/* LOGO EN MÉDAILLON CENTRÉ (-mt-10 sm:-mt-12) */}
-        <div className="-mt-10 sm:-mt-12 relative z-20 mx-auto flex justify-center">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white border-4 border-white shadow-xl overflow-hidden flex items-center justify-center p-1">
+        {/* LOGO EN MÉDAILLON AGRANDI (w-28 h-28 / w-32 h-32) & BORDURE ÉPAISSE */}
+        <div className="-mt-14 md:-mt-16 relative z-20 mx-auto flex justify-center">
+          <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-white border-4 md:border-8 border-white shadow-2xl overflow-hidden flex items-center justify-center p-1.5">
             {restaurant.logo_url ? (
               <img
                 src={restaurant.logo_url}
@@ -236,85 +325,219 @@ export const KioskPage: React.FC = () => {
               />
             ) : (
               <div
-                className="w-full h-full rounded-full flex items-center justify-center text-white font-black text-2xl shadow-inner"
+                className="w-full h-full rounded-full flex items-center justify-center text-white font-black text-3xl shadow-inner"
                 style={{ backgroundColor: primaryColor }}
               >
-                <Gift className="w-8 h-8" />
+                <Gift className="w-10 h-10" />
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* 4. ZONE CENTRALE D'ATTRACTION (QR CODE) */}
-      <main className="relative z-10 my-auto px-4 py-2 flex flex-col items-center text-center max-w-4xl mx-auto w-full">
-        {/* Badge d'accueil doré */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-black uppercase tracking-wider mb-2 shadow-xs"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
-          <span>✨ 100% GAGNANT • CADEAU IMMÉDIAT</span>
-        </motion.div>
+      {/* 4. ZONE CENTRALE : SOIT ÉCRAN QR D'ATTRACTION SOIT JEU DIRECT */}
+      {kioskView === 'qr_screen' ? (
+        <main className="relative z-10 my-auto px-4 py-3 flex flex-col items-center text-center max-w-4xl mx-auto w-full space-y-3 md:space-y-4">
+          {/* Badge d'accroche doré */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-black uppercase tracking-wider shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
+            <span>✨ 100% GAGNANT • CADEAU IMMÉDIAT</span>
+          </motion.div>
 
-        {/* Titres dynamiques */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <h1 className="text-slate-900 font-extrabold text-3xl sm:text-4xl tracking-tight leading-tight">
-            Scannez le QR Code pour
-          </h1>
-          <h2 className="text-indigo-600 font-black text-3xl sm:text-4xl tracking-tight leading-tight mt-0.5">
-            Tourner la Roue !
-          </h2>
-          <p className="text-slate-500 max-w-md mx-auto text-xs sm:text-sm mt-2 leading-relaxed">
-            Donnez votre avis en quelques secondes et débloquez instantanément un cadeau à déguster à table ou en caisse.
-          </p>
-        </motion.div>
+          {/* Titres dynamiques */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center"
+          >
+            <h1 className="text-slate-900 font-extrabold text-3xl sm:text-4xl md:text-5xl tracking-tight leading-tight">
+              Scannez le QR Code pour
+            </h1>
+            <h2 className="text-indigo-600 font-black text-3xl sm:text-4xl md:text-5xl tracking-tight leading-tight mt-0.5">
+              Tourner la Roue !
+            </h2>
+            <p className="text-slate-500 max-w-md mx-auto text-xs sm:text-sm mt-1.5 leading-relaxed">
+              Donnez votre avis en quelques secondes et débloquez instantanément un cadeau à déguster à table ou en caisse.
+            </p>
+          </motion.div>
 
-        {/* Carte QR Code Haute Définition */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="relative group p-5 sm:p-6 bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col items-center mt-3"
-        >
-          {/* Lueur d'ambiance douce en arrière-plan */}
-          <div
-            className="absolute -inset-1 rounded-3xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500 -z-10"
-            style={{ backgroundColor: primaryColor }}
-          />
+          {/* Carte QR Code Agrandie & Action Directe */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="relative group max-w-sm md:max-w-md w-full p-6 md:p-8 bg-white rounded-3xl sm:rounded-4xl shadow-2xl border border-slate-100 flex flex-col items-center mx-auto"
+          >
+            {/* Lueur d'ambiance douce en arrière-plan */}
+            <div
+              className="absolute -inset-1 rounded-3xl sm:rounded-4xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500 -z-10"
+              style={{ backgroundColor: primaryColor }}
+            />
 
-          <QRCodeSVG
-            value={qrUrl}
-            size={220}
-            level="H"
-            includeMargin={false}
-            imageSettings={
-              restaurant.logo_url
-                ? {
-                    src: restaurant.logo_url,
-                    x: undefined,
-                    y: undefined,
-                    height: 46,
-                    width: 46,
-                    excavate: true,
-                  }
-                : undefined
-            }
-          />
+            {/* QR Code SVG Agrandie */}
+            <QRCodeSVG
+              value={qrUrl}
+              size={240}
+              level="H"
+              includeMargin={false}
+              imageSettings={
+                restaurant.logo_url
+                  ? {
+                      src: restaurant.logo_url,
+                      x: undefined,
+                      y: undefined,
+                      height: 52,
+                      width: 52,
+                      excavate: true,
+                    }
+                  : undefined
+              }
+            />
 
-          <div className="mt-3.5 flex items-center gap-1.5 text-slate-700 text-xs font-bold tracking-wider uppercase">
-            <Smartphone className="w-4 h-4 text-indigo-600" />
-            <span>📱 FLASHEZ AVEC L'APPAREIL PHOTO</span>
-          </div>
-        </motion.div>
-      </main>
+            <div className="mt-3 flex items-center gap-1.5 text-slate-700 text-xs font-bold tracking-wider uppercase">
+              <Smartphone className="w-4 h-4 text-indigo-600" />
+              <span>📱 FLASHEZ AVEC L'APPAREIL PHOTO</span>
+            </div>
 
-      {/* 5. BANDEAU DE DÉFILEMENT DES LOTS (TICKER BAS) & FOOTER LÉGAL */}
+            {/* Séparateur visuel avec texte "OU" */}
+            <div className="w-full my-3 flex items-center justify-center gap-3 before:h-px before:flex-1 before:bg-slate-200 after:h-px after:flex-1 after:bg-slate-200">
+              <span className="text-xs text-slate-400 font-bold tracking-wider uppercase px-1">
+                OU
+              </span>
+            </div>
+
+            {/* Bouton tactile direct "Jouer sur la borne" */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => {
+                setKioskView('play_game');
+                setGameStep('rating');
+                startInactivityAutoReset();
+              }}
+              className="w-full py-3.5 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-base flex items-center justify-center gap-2.5 shadow-lg active:scale-95 transition-transform cursor-pointer"
+            >
+              <Gift className="w-5 h-5 text-amber-300" />
+              <span>🎡 Jouer directement sur cet écran</span>
+            </motion.button>
+          </motion.div>
+        </main>
+      ) : (
+        /* MODE JEU INTERACTIF EN BORNE */
+        <main className="relative z-10 my-auto px-4 py-2 flex flex-col items-center justify-center w-full max-w-xl mx-auto">
+          <AnimatePresence mode="wait">
+            {gameStep === 'rating' && (
+              <motion.div
+                key="kiosk_rating"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="w-full flex justify-center"
+              >
+                <StarRating
+                  restaurantName={restaurant.name}
+                  logoUrl={restaurant.logo_url}
+                  bannerUrl={restaurant.banner_url}
+                  primaryColor={primaryColor}
+                  onRatingSelected={handleRatingSelected}
+                />
+              </motion.div>
+            )}
+
+            {gameStep === 'google_redirect' && (
+              <motion.div
+                key="kiosk_google"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full flex justify-center"
+              >
+                <GoogleReviewGate
+                  rating={userRating}
+                  googleReviewUrl={restaurant.google_review_url || 'https://google.com'}
+                  restaurantId={restaurant.id}
+                  primaryColor={primaryColor}
+                  onProceedToWheel={() => {
+                    setGameStep('wheel');
+                    startInactivityAutoReset();
+                  }}
+                />
+              </motion.div>
+            )}
+
+            {gameStep === 'private_feedback' && (
+              <motion.div
+                key="kiosk_feedback"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full flex justify-center"
+              >
+                <PrivateFeedbackForm
+                  restaurantId={restaurant.id}
+                  rating={userRating}
+                  primaryColor={primaryColor}
+                  onProceedToWheel={() => {
+                    setGameStep('wheel');
+                    startInactivityAutoReset();
+                  }}
+                />
+              </motion.div>
+            )}
+
+            {gameStep === 'wheel' && (
+              <motion.div
+                key="kiosk_wheel"
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                className="w-full flex justify-center"
+              >
+                <LuckyWheel
+                  rewards={rewards}
+                  primaryColor={primaryColor}
+                  secondaryColor={restaurant.theme_secondary || '#A855F7'}
+                  accentColor={restaurant.theme_accent || '#F59E0B'}
+                  logoUrl={restaurant.logo_url}
+                  restaurantName={restaurant.name}
+                  autoResetSeconds={25}
+                  onRewardWon={handleRewardWon}
+                />
+              </motion.div>
+            )}
+
+            {gameStep === 'voucher' && wonPrize && (
+              <motion.div
+                key="kiosk_voucher"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full flex flex-col items-center"
+              >
+                <PrizeVoucher
+                  prize={wonPrize}
+                  restaurantName={restaurant.name}
+                  primaryColor={primaryColor}
+                  iconName={wonRewardInfo?.icon || 'Gift'}
+                />
+
+                <button
+                  onClick={handleReturnToQr}
+                  className="mt-4 px-6 py-3 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 text-amber-300" />
+                  <span>Terminer • Retour à l'accueil borne</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+      )}
+
+      {/* 5. BANDEAU DE DÉFILEMENT DES LOTS & FOOTER BRANDING */}
       <div className="relative z-10 w-full shrink-0">
         {/* Ticker / Bandeau des lots */}
         <div className="w-full py-2.5 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-xs overflow-hidden">
@@ -347,9 +570,9 @@ export const KioskPage: React.FC = () => {
         {/* Footer Légal & Branding GooGift */}
         <footer className="w-full py-2 bg-slate-50/90 border-t border-slate-100 text-center px-4">
           <p className="text-[11px] text-slate-400 font-medium tracking-wide text-center">
-            © 2026 GooGift Technologies. Tous droits réservés. Règlement complet disponible en scannant le QR code.
+            © 2026 GooGift Technologies. Tous droits réservés.
           </p>
-          <p className="text-xs font-semibold text-slate-500 tracking-normal flex items-center justify-center gap-1.5 mt-0.5">
+          <p className="text-xs font-semibold text-slate-500 tracking-normal flex items-center justify-center gap-1.5 pb-2 mt-0.5">
             Powered with ❤️ by GooGift
           </p>
         </footer>
