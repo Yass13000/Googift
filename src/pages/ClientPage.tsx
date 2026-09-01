@@ -37,14 +37,15 @@ export const ClientPage: React.FC = () => {
 
       // ANTI-TRICHE NIVEAU 1 : Vérification de l'appareil (localStorage)
       try {
-        const playedTimestamp = localStorage.getItem(`gogift_has_played_${restData.id}`);
-        if (playedTimestamp) {
-          setHasPlayedOnDevice(true);
-        }
+        const storageKey = `gogift_played_${restData.id}`;
+        const playedSession =
+          localStorage.getItem(storageKey) ||
+          localStorage.getItem(`gogift_has_played_${restData.id}`);
 
         const savedJson =
           localStorage.getItem(`gogift_saved_prize_${restData.id}`) ||
           localStorage.getItem('gogift_saved_prize');
+
         if (savedJson) {
           const parsed = JSON.parse(savedJson) as ClaimedPrize;
           const expiry = new Date(parsed.expires_at).getTime();
@@ -52,11 +53,18 @@ export const ClientPage: React.FC = () => {
             setActiveSavedPrize(parsed);
           }
         }
+
+
+        if (playedSession) {
+          setHasPlayedOnDevice(true);
+          setStep('already_played');
+        }
       } catch {
         // Ignore
       }
 
       setLoading(false);
+
     }
     loadData();
   }, [slug]);
@@ -125,6 +133,14 @@ export const ClientPage: React.FC = () => {
       setWonPrize(res.prize);
       setActiveSavedPrize(null);
       try {
+        localStorage.setItem(
+          `gogift_played_${restaurant.id}`,
+          JSON.stringify({
+            playedAt: new Date().toISOString(),
+            rewardName: wonRewardInfo.label,
+            claimCode: res.prize.claim_code,
+          })
+        );
         localStorage.setItem(`gogift_saved_prize_${restaurant.id}`, JSON.stringify(res.prize));
         localStorage.setItem(`gogift_has_played_${restaurant.id}`, new Date().toISOString());
         setHasPlayedOnDevice(true);
@@ -132,6 +148,7 @@ export const ClientPage: React.FC = () => {
     }
     setStep('voucher');
   };
+
 
   const handleRestoreVoucher = () => {
     if (activeSavedPrize) {
@@ -339,18 +356,32 @@ export const ClientPage: React.FC = () => {
                 <ShieldCheck className="w-8 h-8" />
               </div>
 
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                Participation déjà enregistrée
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                Vous avez déjà participé !
               </h3>
 
-              <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                Une seule participation par client est autorisée auprès de <strong className="text-slate-800">{restaurantName}</strong>.
+              <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                Une seule participation est autorisée par client dans cet établissement.
               </p>
 
-              <div className="mt-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-600 text-left space-y-1">
+              {activeSavedPrize && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWonPrize(activeSavedPrize);
+                    setStep('voucher');
+                  }}
+                  className="mt-5 w-full py-4 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Gift className="w-4 h-4 text-amber-300" />
+                  <span>Voir mon cadeau</span>
+                </button>
+              )}
+
+              <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-600 text-left space-y-1">
                 <p className="font-bold text-slate-800">Besoin d'aide ?</p>
                 <p className="text-[11px] text-slate-500">
-                  Si vous avez déjà gagné un lot aujourd'hui, présentez votre récapitulatif ou sollicitez un membre de l'équipe en salle ou en caisse.
+                  Présentez votre récapitulatif ou sollicitez un membre de l'équipe <strong className="text-slate-700">{restaurantName}</strong> en salle ou en caisse.
                 </p>
               </div>
 
@@ -359,13 +390,14 @@ export const ClientPage: React.FC = () => {
                   href={restaurant.google_review_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-4 w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                  className="mt-3.5 w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
                 >
-                  <span>Voir la page de l'établissement</span>
+                  <span>Voir la fiche de l'établissement</span>
                 </a>
               )}
             </motion.div>
           )}
+
 
           {step === 'voucher' && wonPrize && (
             <motion.div

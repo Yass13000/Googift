@@ -13,6 +13,7 @@ interface LuckyWheelProps {
   backgroundColor?: string;
   logoUrl?: string | null;
   restaurantName?: string;
+  disabled?: boolean;
   autoResetSeconds?: number;
   resetTrigger?: any;
 }
@@ -24,9 +25,11 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
   secondaryColor = '#283b25',
   accentColor = '#b8c073',
   logoUrl = null,
+  disabled = false,
   autoResetSeconds,
   resetTrigger,
 }) => {
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [currentRotation, setCurrentRotation] = useState(0);
@@ -474,9 +477,10 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
       rewardsCount: rewards.length,
     });
 
-    if (isSpinning || hasSpun || rewards.length === 0) return;
+    if (isSpinning || hasSpun || disabled || rewards.length === 0) return;
     setIsSpinning(true);
     setHasSpun(true);
+
 
     // Initialiser/débloquer l'audio au premier tap utilisateur
     try {
@@ -617,18 +621,19 @@ export const LuckyWheel: React.FC<LuckyWheelProps> = ({
 
       {/* BOUTON D'ACTION BLEU NUIT / NAVY AVEC SUPPORT TOUCH ÉTENDU */}
       <motion.button
-        whileHover={{ scale: isSpinning || hasSpun ? 1 : 1.02 }}
-        whileTap={{ scale: isSpinning || hasSpun ? 1 : 0.98 }}
+        whileHover={{ scale: isSpinning || hasSpun || disabled ? 1 : 1.02 }}
+        whileTap={{ scale: isSpinning || hasSpun || disabled ? 1 : 0.98 }}
         onClick={handleSpin}
         onTouchEnd={(e) => {
-          if (!isSpinning && !hasSpun) {
+          if (!isSpinning && !hasSpun && !disabled) {
             e.preventDefault();
             handleSpin();
           }
         }}
-        disabled={isSpinning || hasSpun}
+        disabled={isSpinning || hasSpun || disabled}
         className="w-full max-w-xs py-4 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-base shadow-xl shadow-slate-900/20 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer touch-manipulation select-none"
       >
+
         {isSpinning ? (
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />

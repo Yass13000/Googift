@@ -749,7 +749,14 @@ export async function createClaimedPrize(
 
 
     if (error) {
+      if (error.code === '23505') {
+        return {
+          alreadyParticipated: true,
+          error: "Vous avez déjà tenté votre chance dans cet établissement."
+        };
+      }
       console.warn('Supabase prize creation fallback (trying standard schema):', error);
+
       // Fallback without customer lead fields in case columns are not yet in DB
       const { data: baseData, error: baseError } = await supabase
         .from('claimed_prizes')
