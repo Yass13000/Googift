@@ -146,7 +146,7 @@ export const KioskPage: React.FC = () => {
   const qrUrl = `${window.location.origin}/${restaurant.slug}`;
 
   return (
-    <div className="relative min-h-screen w-screen bg-[#F8FAFC] text-slate-800 overflow-x-hidden flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+    <div className="relative min-h-screen w-screen bg-[#F8FAFC] text-slate-800 overflow-x-hidden flex flex-col justify-between selection:bg-indigo-500 selection:text-white select-none touch-manipulation">
       {/* 1. DÉCORATION : ROUE TOURNANTE EN HAUT À DROITE */}
       <div className="absolute -right-36 -top-36 md:-right-20 md:-top-20 w-96 md:w-[32rem] h-96 md:h-[32rem] opacity-20 pointer-events-none animate-spin-slow z-0">
         <div className="w-full h-full rounded-full border-8 border-dashed border-indigo-400 flex items-center justify-center p-8">
@@ -187,17 +187,16 @@ export const KioskPage: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* 3. BANNIÈRE SUPÉRIEURE & CONTROLES EN HAUT À DROITE */}
-      <div className="w-full relative z-10">
-        {/* Image de Bannière Pleine Largeur (Agrandie) */}
-        <div className="w-full h-64 sm:h-72 md:h-80 relative overflow-hidden bg-slate-900 shadow-sm">
+      {/* 3. BANNIÈRE SUPÉRIEURE & MÉDAILLON LOGO */}
+      <div className="w-full relative z-10 shrink-0">
+        {/* Image de Bannière Pleine Largeur */}
+        <div className="w-full h-44 sm:h-52 md:h-60 relative overflow-hidden bg-slate-900 shadow-sm">
           <img
             src={restaurant.banner_url || DEFAULT_BANNER}
             alt={restaurant.name}
             className="w-full h-full object-cover opacity-90"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/30" />
-
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/30" />
 
           {/* Boutons de Contrôles & Sortie Secrète (Haut Droite) */}
           <div className="absolute top-4 right-4 flex items-center gap-2 z-30">
@@ -226,9 +225,9 @@ export const KioskPage: React.FC = () => {
           </div>
         </div>
 
-        {/* LOGO EN MÉDAILLON CENTRÉ (-mt-10) */}
-        <div className="-mt-10 relative z-20 mx-auto flex justify-center">
-          <div className="w-20 h-20 rounded-full bg-white border-4 border-white shadow-lg overflow-hidden flex items-center justify-center p-1">
+        {/* LOGO EN MÉDAILLON CENTRÉ (-mt-10 sm:-mt-12) */}
+        <div className="-mt-10 sm:-mt-12 relative z-20 mx-auto flex justify-center">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white border-4 border-white shadow-xl overflow-hidden flex items-center justify-center p-1">
             {restaurant.logo_url ? (
               <img
                 src={restaurant.logo_url}
@@ -247,50 +246,51 @@ export const KioskPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. CONTENU CENTRAL : TITRE AVEC EFFET GRADIENT & CADRE QR CODE */}
-      <main className="relative z-10 my-auto px-4 py-4 flex flex-col items-center text-center max-w-4xl mx-auto w-full">
-        {/* Animated Badge */}
+      {/* 4. ZONE CENTRALE D'ATTRACTION (QR CODE) */}
+      <main className="relative z-10 my-auto px-4 py-2 flex flex-col items-center text-center max-w-4xl mx-auto w-full">
+        {/* Badge d'accueil doré */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-black uppercase tracking-wider mb-3 shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-black uppercase tracking-wider mb-2 shadow-xs"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
-          <span>100% Gagnant • Cadeau Immédiat</span>
+          <span>✨ 100% GAGNANT • CADEAU IMMÉDIAT</span>
         </motion.div>
 
-        {/* Titre Dynamique avec Effet Dégradé Préservé */}
-        <motion.h1
+        {/* Titres dynamiques */}
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight max-w-2xl mb-2 drop-shadow-sm"
+          className="text-center"
         >
-          Scannez le QR Code pour{' '}
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-rose-500 via-amber-400 to-indigo-600">
+          <h1 className="text-slate-900 font-extrabold text-3xl sm:text-4xl tracking-tight leading-tight">
+            Scannez le QR Code pour
+          </h1>
+          <h2 className="text-indigo-600 font-black text-3xl sm:text-4xl tracking-tight leading-tight mt-0.5">
             Tourner la Roue !
-          </span>
-        </motion.h1>
+          </h2>
+          <p className="text-slate-500 max-w-md mx-auto text-xs sm:text-sm mt-2 leading-relaxed">
+            Donnez votre avis en quelques secondes et débloquez instantanément un cadeau à déguster à table ou en caisse.
+          </p>
+        </motion.div>
 
-        <p className="text-slate-600 text-sm sm:text-base max-w-lg mb-6 leading-relaxed">
-          Donnez votre avis en quelques secondes et débloquez instantanément un cadeau à déguster à table ou en caisse.
-        </p>
-
-        {/* Cadre Haute Définition QR Code */}
+        {/* Carte QR Code Haute Définition */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="relative group p-6 sm:p-8 bg-white rounded-3xl sm:rounded-4xl shadow-xl border border-slate-200/80 hover:border-indigo-400 transition-all flex flex-col items-center"
+          className="relative group p-5 sm:p-6 bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col items-center mt-3"
         >
           {/* Lueur d'ambiance douce en arrière-plan */}
           <div
-            className="absolute -inset-1 rounded-3xl sm:rounded-4xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500 -z-10"
+            className="absolute -inset-1 rounded-3xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500 -z-10"
             style={{ backgroundColor: primaryColor }}
           />
 
           <QRCodeSVG
             value={qrUrl}
-            size={230}
+            size={220}
             level="H"
             includeMargin={false}
             imageSettings={
@@ -307,40 +307,53 @@ export const KioskPage: React.FC = () => {
             }
           />
 
-          <div className="mt-4 flex items-center gap-2 text-slate-800 text-xs font-black tracking-wider uppercase">
+          <div className="mt-3.5 flex items-center gap-1.5 text-slate-700 text-xs font-bold tracking-wider uppercase">
             <Smartphone className="w-4 h-4 text-indigo-600" />
-            <span>Flashez avec l'appareil photo</span>
+            <span>📱 FLASHEZ AVEC L'APPAREIL PHOTO</span>
           </div>
         </motion.div>
       </main>
 
-      {/* 5. TICKER / BANDEAU DES LOTS À GAGNER EN BAS */}
-      <footer className="relative z-10 w-full py-3.5 bg-white/90 backdrop-blur-md border-t border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-700 shrink-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-            <span>À REMPORTER MAINTENANT :</span>
-          </div>
+      {/* 5. BANDEAU DE DÉFILEMENT DES LOTS (TICKER BAS) & FOOTER LÉGAL */}
+      <div className="relative z-10 w-full shrink-0">
+        {/* Ticker / Bandeau des lots */}
+        <div className="w-full py-2.5 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+              <span>À REMPORTER MAINTENANT :</span>
+            </div>
 
-          {/* Reward Badges Stream */}
-          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1 max-w-full">
-            {rewards.map((reward) => (
-              <div
-                key={reward.id}
-                className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-xs shrink-0 whitespace-nowrap"
-              >
+            {/* Stream des lots disponibles */}
+            <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+              {rewards.map((reward) => (
                 <div
-                  className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[11px]"
-                  style={{ backgroundColor: reward.color || primaryColor }}
+                  key={reward.id}
+                  className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-xs shrink-0 whitespace-nowrap"
                 >
-                  <DynamicIcon name={reward.icon} className="w-3 h-3" />
+                  <div
+                    className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[11px]"
+                    style={{ backgroundColor: reward.color || primaryColor }}
+                  >
+                    <DynamicIcon name={reward.icon} className="w-3 h-3" />
+                  </div>
+                  <span>{reward.label}</span>
                 </div>
-                <span>{reward.label}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </footer>
+
+        {/* Footer Légal & Branding GooGift */}
+        <footer className="w-full py-2 bg-slate-50/90 border-t border-slate-100 text-center px-4">
+          <p className="text-[11px] text-slate-400 font-medium tracking-wide text-center">
+            © 2026 GooGift Technologies. Tous droits réservés. Règlement complet disponible en scannant le QR code.
+          </p>
+          <p className="text-xs font-semibold text-slate-500 tracking-normal flex items-center justify-center gap-1.5 mt-0.5">
+            Powered with ❤️ by GooGift
+          </p>
+        </footer>
+      </div>
 
       {/* 6. MODALE CODE PIN SÉCURISÉ POUR SORTIR DU MODE BORNE */}
       <AnimatePresence>
